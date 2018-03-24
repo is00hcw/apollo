@@ -1,7 +1,7 @@
 eureka:
   instance:
-    hostname: ${hostname:localhost}
-    preferIpAddress: true
+    hostname: erp2.test.pagoda.com.cn
+    preferIpAddress: false
   client:
     serviceUrl:
       defaultZone: http://erp2.test.pagoda.com.cn:7080/eureka/
