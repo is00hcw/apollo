@@ -1,7 +1,7 @@
 eureka:
   instance:
     hostname: erp2.test.pagoda.com.cn
-    preferIpAddress: true
+    preferIpAddress: false
   server:
     peerEurekaNodesUpdateIntervalMs: 60000
     enableSelfPreservation: false
