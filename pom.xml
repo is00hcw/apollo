@@ -859,14 +859,29 @@
 			</plugin>
 		</plugins>
 	</reporting>
+	<!--<distributionManagement>-->
+		<!--<repository>-->
+			<!--<id>releases</id>-->
+			<!--<url>${releases.repo}</url>-->
+		<!--</repository>-->
+		<!--<snapshotRepository>-->
+			<!--<id>snapshots</id>-->
+			<!--<url>${snapshots.repo}</url>-->
+		<!--</snapshotRepository>-->
+	<!--</distributionManagement>-->
+
+	<!--项目发布-->
 	<distributionManagement>
 		<repository>
-			<id>releases</id>
-			<url>${releases.repo}</url>
+			<id>user-release</id>
+			<name>User Project Release</name>
+			<url>http://maven.dev.pagoda.com.cn:10008/nexus/content/repositories/releases</url>
 		</repository>
+
 		<snapshotRepository>
-			<id>snapshots</id>
-			<url>${snapshots.repo}</url>
+			<id>user-snapshots</id>
+			<name>User Project SNAPSHOTS</name>
+			<url>http://maven.dev.pagoda.com.cn:10008/nexus/content/repositories/snapshots</url>
 		</snapshotRepository>
 	</distributionManagement>
 </project>

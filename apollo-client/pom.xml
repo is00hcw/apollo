@@ -62,4 +62,19 @@
 		</dependency>
 		<!-- end of test -->
 	</dependencies>
+
+	<!--项目发布-->
+	<distributionManagement>
+		<repository>
+			<id>user-release</id>
+			<name>User Project Release</name>
+			<url>http://maven.dev.pagoda.com.cn:10008/nexus/content/repositories/releases</url>
+		</repository>
+
+		<snapshotRepository>
+			<id>user-snapshots</id>
+			<name>User Project SNAPSHOTS</name>
+			<url>http://maven.dev.pagoda.com.cn:10008/nexus/content/repositories/snapshots</url>
+		</snapshotRepository>
+	</distributionManagement>
 </project>
