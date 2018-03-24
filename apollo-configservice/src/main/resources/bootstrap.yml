@@ -1,6 +1,6 @@
 eureka:
   instance:
-    hostname: ${hostname:localhost}
+    hostname: erp2.test.pagoda.com.cn
     preferIpAddress: true
   server:
     peerEurekaNodesUpdateIntervalMs: 60000
