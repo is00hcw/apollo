@@ -1,8 +1,8 @@
 package com.ctrip.framework.apollo.adminservice.controller;
 
-import com.ctrip.framework.apollo.common.entity.AppNamespace;
 import com.ctrip.framework.apollo.biz.repository.AppNamespaceRepository;
-import com.ctrip.framework.apollo.core.dto.AppNamespaceDTO;
+import com.ctrip.framework.apollo.common.dto.AppNamespaceDTO;
+import com.ctrip.framework.apollo.common.entity.AppNamespace;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -24,6 +24,7 @@ public class AppNamespaceControllerTest extends AbstractControllerTest{
     dto.setAppId(appId);
     dto.setName(name);
     dto.setComment(comment);
+    dto.setDataChangeCreatedBy("apollo");
 
     AppNamespaceDTO resultDto = restTemplate.postForEntity(
         String.format("http://localhost:%d/apps/%s/appnamespaces", port, appId),dto, AppNamespaceDTO.class).getBody();

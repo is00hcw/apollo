@@ -1,16 +1,16 @@
 package com.ctrip.framework.apollo.biz.message;
 
+import com.ctrip.framework.apollo.biz.config.BizConfig;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.SettableFuture;
 
+import com.ctrip.framework.apollo.biz.AbstractUnitTest;
 import com.ctrip.framework.apollo.biz.entity.ReleaseMessage;
 import com.ctrip.framework.apollo.biz.repository.ReleaseMessageRepository;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.mockito.runners.MockitoJUnitRunner;
 import org.springframework.core.env.Environment;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -22,13 +22,12 @@ import static org.mockito.Mockito.when;
 /**
  * @author Jason Song(song_s@ctrip.com)
  */
-@RunWith(MockitoJUnitRunner.class)
-public class ReleaseMessageScannerTest {
+public class ReleaseMessageScannerTest extends AbstractUnitTest {
   private ReleaseMessageScanner releaseMessageScanner;
   @Mock
   private ReleaseMessageRepository releaseMessageRepository;
   @Mock
-  private Environment env;
+  private BizConfig bizConfig;
   private int databaseScanInterval;
 
   @Before
@@ -36,9 +35,9 @@ public class ReleaseMessageScannerTest {
     releaseMessageScanner = new ReleaseMessageScanner();
     ReflectionTestUtils
         .setField(releaseMessageScanner, "releaseMessageRepository", releaseMessageRepository);
-    ReflectionTestUtils.setField(releaseMessageScanner, "env", env);
+    ReflectionTestUtils.setField(releaseMessageScanner, "bizConfig", bizConfig);
     databaseScanInterval = 100; //100 ms
-    when(env.getProperty("apollo.message-scan.interval")).thenReturn(String.valueOf(databaseScanInterval));
+    when(bizConfig.releaseMessageScanIntervalInMilli()).thenReturn(databaseScanInterval);
     releaseMessageScanner.afterPropertiesSet();
   }
 

@@ -1,35 +1,31 @@
 package com.ctrip.framework.apollo.biz.message;
 
-import com.google.common.collect.Lists;
-
-import com.ctrip.framework.apollo.biz.entity.ReleaseMessage;
-import com.ctrip.framework.apollo.biz.repository.ReleaseMessageRepository;
-import com.ctrip.framework.apollo.core.utils.ApolloThreadFactory;
-import com.dianping.cat.Cat;
-import com.dianping.cat.message.Message;
-import com.dianping.cat.message.Transaction;
+import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.env.Environment;
 import org.springframework.util.CollectionUtils;
 
-import java.util.List;
-import java.util.Objects;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import com.ctrip.framework.apollo.biz.config.BizConfig;
+import com.ctrip.framework.apollo.biz.entity.ReleaseMessage;
+import com.ctrip.framework.apollo.biz.repository.ReleaseMessageRepository;
+import com.ctrip.framework.apollo.core.utils.ApolloThreadFactory;
+import com.ctrip.framework.apollo.tracer.Tracer;
+import com.ctrip.framework.apollo.tracer.spi.Transaction;
+import com.google.common.collect.Lists;
 
 /**
  * @author Jason Song(song_s@ctrip.com)
  */
 public class ReleaseMessageScanner implements InitializingBean {
   private static final Logger logger = LoggerFactory.getLogger(ReleaseMessageScanner.class);
-  private static final int DEFAULT_SCAN_INTERVAL_IN_MS = 1000;
   @Autowired
-  private Environment env;
+  private BizConfig bizConfig;
   @Autowired
   private ReleaseMessageRepository releaseMessageRepository;
   private int databaseScanInterval;
@@ -38,27 +34,27 @@ public class ReleaseMessageScanner implements InitializingBean {
   private long maxIdScanned;
 
   public ReleaseMessageScanner() {
-    listeners = Lists.newLinkedList();
+    listeners = Lists.newCopyOnWriteArrayList();
     executorService = Executors.newScheduledThreadPool(1, ApolloThreadFactory
         .create("ReleaseMessageScanner", true));
   }
 
   @Override
   public void afterPropertiesSet() throws Exception {
-    populateDataBaseInterval();
+    databaseScanInterval = bizConfig.releaseMessageScanIntervalInMilli();
     maxIdScanned = loadLargestMessageId();
     executorService.scheduleWithFixedDelay((Runnable) () -> {
-      Transaction transaction = Cat.newTransaction("Apollo.ReleaseMessageScanner", "scanMessage");
+      Transaction transaction = Tracer.newTransaction("Apollo.ReleaseMessageScanner", "scanMessage");
       try {
         scanMessages();
-        transaction.setStatus(Message.SUCCESS);
+        transaction.setStatus(Transaction.SUCCESS);
       } catch (Throwable ex) {
         transaction.setStatus(ex);
         logger.error("Scan and send message failed", ex);
       } finally {
         transaction.complete();
       }
-    }, getDatabaseScanIntervalMs(), getDatabaseScanIntervalMs(), TimeUnit.MILLISECONDS);
+    }, databaseScanInterval, databaseScanInterval, TimeUnit.MILLISECONDS);
 
   }
 
@@ -119,27 +115,10 @@ public class ReleaseMessageScanner implements InitializingBean {
         try {
           listener.handleMessage(message, Topics.APOLLO_RELEASE_TOPIC);
         } catch (Throwable ex) {
-          Cat.logError(ex);
+          Tracer.logError(ex);
           logger.error("Failed to invoke message listener {}", listener.getClass(), ex);
         }
       }
     }
-  }
-
-  private void populateDataBaseInterval() {
-    databaseScanInterval = DEFAULT_SCAN_INTERVAL_IN_MS;
-    try {
-      String interval = env.getProperty("apollo.message-scan.interval");
-      if (!Objects.isNull(interval)) {
-        databaseScanInterval = Integer.parseInt(interval);
-      }
-    } catch (Throwable ex) {
-      Cat.logError(ex);
-      logger.error("Load apollo message scan interval from system property failed", ex);
-    }
-  }
-
-  private int getDatabaseScanIntervalMs() {
-    return databaseScanInterval;
   }
 }

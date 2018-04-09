@@ -1,12 +1,20 @@
 role_module.controller('NamespaceRoleController',
-                       ['$scope', '$location', '$window', 'toastr', 'AppService', 'AppUtil', 'PermissionService',
-                        function ($scope, $location, $window, toastr, AppService, AppUtil, PermissionService) {
+                       ['$scope', '$location', '$window', 'toastr', 'AppService', 'UserService', 'AppUtil',
+                        'PermissionService',
+                        function ($scope, $location, $window, toastr, AppService, UserService, AppUtil,
+                                  PermissionService) {
 
                             var params = AppUtil.parseParams($location.$$url);
                             $scope.pageContext = {
                                 appId: params.appid,
                                 namespaceName: params.namespaceName
                             };
+
+                            $scope.modifyRoleSubmitBtnDisabled = false;
+                            $scope.ReleaseRoleSubmitBtnDisabled = false;
+
+                            $scope.releaseRoleWidgetId = 'releaseRoleWidgetId';
+                            $scope.modifyRoleWidgetId = 'modifyRoleWidgetId';
 
                             PermissionService.has_assign_user_permission($scope.pageContext.appId)
                                 .then(function (result) {
@@ -19,32 +27,51 @@ role_module.controller('NamespaceRoleController',
                                                                        $scope.pageContext.namespaceName)
                                 .then(function (result) {
                                     $scope.rolesAssignedUsers = result;
-                                    console.log(result);
                                 }, function (result) {
                                     toastr.error(AppUtil.errorMsg(result), "加载授权用户出错");
                                 });
 
-                            $scope.toAssignReleaseNamespaceRoleUser = '', $scope.toAssignModifyNamespaceRoleUser = '';
-
                             $scope.assignRoleToUser = function (roleType) {
                                 if ('ReleaseNamespace' == roleType) {
+                                    var user = $('.' + $scope.releaseRoleWidgetId).select2('data')[0];
+                                    if (!user) {
+                                        toastr.warning("请选择用户");
+                                        return;
+                                    }
+                                    $scope.ReleaseRoleSubmitBtnDisabled = true;
+                                    var toAssignReleaseNamespaceRoleUser = user.id;
                                     PermissionService.assign_release_namespace_role($scope.pageContext.appId,
                                                                                     $scope.pageContext.namespaceName,
-                                                                                    $scope.toAssignReleaseNamespaceRoleUser)
+                                                                                    toAssignReleaseNamespaceRoleUser)
                                         .then(function (result) {
                                             toastr.success("添加成功");
-                                            $scope.rolesAssignedUsers.releaseRoleUsers.push({userId: $scope.toAssignReleaseNamespaceRoleUser});
+                                            $scope.ReleaseRoleSubmitBtnDisabled = false;
+                                            $scope.rolesAssignedUsers.releaseRoleUsers.push(
+                                                {userId: toAssignReleaseNamespaceRoleUser});
+                                            $('.' + $scope.releaseRoleWidgetId).select2("val", "");
                                         }, function (result) {
+                                            $scope.ReleaseRoleSubmitBtnDisabled = false;
                                             toastr.error(AppUtil.errorMsg(result), "添加失败");
                                         });
                                 } else {
+                                    var user = $('.' + $scope.modifyRoleWidgetId).select2('data')[0];
+                                    if (!user) {
+                                        toastr.warning("请选择用户");
+                                        return;
+                                    }
+                                    $scope.modifyRoleSubmitBtnDisabled = true;
+                                    var toAssignModifyNamespaceRoleUser = user.id;
                                     PermissionService.assign_modify_namespace_role($scope.pageContext.appId,
                                                                                    $scope.pageContext.namespaceName,
-                                                                                   $scope.toAssignModifyNamespaceRoleUser)
+                                                                                   toAssignModifyNamespaceRoleUser)
                                         .then(function (result) {
                                             toastr.success("添加成功");
-                                            $scope.rolesAssignedUsers.modifyRoleUsers.push({userId: $scope.toAssignModifyNamespaceRoleUser});
+                                            $scope.modifyRoleSubmitBtnDisabled = false;
+                                            $scope.rolesAssignedUsers.modifyRoleUsers.push(
+                                                {userId: toAssignModifyNamespaceRoleUser});
+                                            $('.' + $scope.modifyRoleWidgetId).select2("val", "");
                                         }, function (result) {
+                                            $scope.modifyRoleSubmitBtnDisabled = false;
                                             toastr.error(AppUtil.errorMsg(result), "添加失败");
                                         });
                                 }

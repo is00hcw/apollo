@@ -1,19 +1,20 @@
 package com.ctrip.framework.apollo.internals;
 
-import com.google.common.base.Function;
-import com.google.common.collect.Maps;
-
-import com.ctrip.framework.apollo.model.ConfigChange;
-import com.ctrip.framework.apollo.model.ConfigChangeEvent;
-import com.ctrip.framework.apollo.util.ExceptionUtil;
-import com.dianping.cat.Cat;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
+import com.ctrip.framework.apollo.model.ConfigChange;
+import com.ctrip.framework.apollo.model.ConfigChangeEvent;
+import com.ctrip.framework.apollo.tracer.Tracer;
+import com.ctrip.framework.apollo.util.ExceptionUtil;
+import com.google.common.base.Function;
+import com.google.common.collect.Maps;
 
 /**
  * @author Jason Song(song_s@ctrip.com)
@@ -40,7 +41,7 @@ public class SimpleConfig extends AbstractConfig implements RepositoryChangeList
     try {
       m_configProperties = m_configRepository.getConfig();
     } catch (Throwable ex) {
-      Cat.logError(ex);
+      Tracer.logError(ex);
       logger.warn("Init Apollo Simple Config failed - namespace: {}, reason: {}", m_namespace,
           ExceptionUtil.getDetailMessage(ex));
     } finally {
@@ -53,10 +54,19 @@ public class SimpleConfig extends AbstractConfig implements RepositoryChangeList
   @Override
   public String getProperty(String key, String defaultValue) {
     if (m_configProperties == null) {
-      logger.error("Config initialization failed, always return default value!");
+      logger.warn("Could not load config from Apollo, always return default value!");
       return defaultValue;
     }
     return this.m_configProperties.getProperty(key, defaultValue);
+  }
+
+  @Override
+  public Set<String> getPropertyNames() {
+    if (m_configProperties == null) {
+      return Collections.emptySet();
+    }
+
+    return m_configProperties.stringPropertyNames();
   }
 
   @Override
@@ -79,9 +89,10 @@ public class SimpleConfig extends AbstractConfig implements RepositoryChangeList
         });
 
     m_configProperties = newConfigProperties;
+    clearConfigCache();
 
     this.fireConfigChange(new ConfigChangeEvent(m_namespace, changeMap));
 
-    Cat.logEvent("Apollo.Client.ConfigChanges", m_namespace);
+    Tracer.logEvent("Apollo.Client.ConfigChanges", m_namespace);
   }
 }

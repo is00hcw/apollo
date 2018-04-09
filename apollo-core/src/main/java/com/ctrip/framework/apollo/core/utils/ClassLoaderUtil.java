@@ -1,9 +1,10 @@
 package com.ctrip.framework.apollo.core.utils;
 
+import com.google.common.base.Strings;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.UnsupportedEncodingException;
 import java.net.URL;
 import java.net.URLDecoder;
 
@@ -25,16 +26,18 @@ public class ClassLoaderUtil {
     try {
       URL url = loader.getResource("");
       // get class path
-      classPath = url.getPath();
-      classPath = URLDecoder.decode(classPath, "utf-8");
+      if (url != null) {
+        classPath = url.getPath();
+        classPath = URLDecoder.decode(classPath, "utf-8");
+      }
 
       // 如果是jar包内的，则返回当前路径
-      if (classPath.contains(".jar!")) {
-        logger.warn("using config file inline jar!");
+      if (Strings.isNullOrEmpty(classPath) || classPath.contains(".jar!")) {
         classPath = System.getProperty("user.dir");
       }
-    } catch (UnsupportedEncodingException e) {
-      e.printStackTrace();
+    } catch (Throwable ex) {
+      classPath = System.getProperty("user.dir");
+      logger.warn("Failed to locate class path, fallback to user.dir: {}", classPath, ex);
     }
   }
 
@@ -45,5 +48,14 @@ public class ClassLoaderUtil {
 
   public static String getClassPath() {
     return classPath;
+  }
+
+  public static boolean isClassPresent(String className) {
+    try {
+      Class.forName(className);
+      return true;
+    } catch (ClassNotFoundException ex) {
+      return false;
+    }
   }
 }

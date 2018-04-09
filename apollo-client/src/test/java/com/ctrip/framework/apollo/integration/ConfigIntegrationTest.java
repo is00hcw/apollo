@@ -1,27 +1,9 @@
 package com.ctrip.framework.apollo.integration;
 
-import com.google.common.base.Joiner;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.util.concurrent.SettableFuture;
-
-import com.ctrip.framework.apollo.BaseIntegrationTest;
-import com.ctrip.framework.apollo.Config;
-import com.ctrip.framework.apollo.ConfigChangeListener;
-import com.ctrip.framework.apollo.ConfigService;
-import com.ctrip.framework.apollo.core.ConfigConsts;
-import com.ctrip.framework.apollo.core.dto.ApolloConfig;
-import com.ctrip.framework.apollo.core.dto.ApolloConfigNotification;
-import com.ctrip.framework.apollo.core.utils.ClassLoaderUtil;
-import com.ctrip.framework.apollo.model.ConfigChangeEvent;
-
-import org.eclipse.jetty.server.Request;
-import org.eclipse.jetty.server.handler.AbstractHandler;
-import org.eclipse.jetty.server.handler.ContextHandler;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import static org.hamcrest.core.IsEqual.equalTo;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -37,10 +19,30 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import static org.hamcrest.core.IsEqual.equalTo;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
+import org.eclipse.jetty.server.Request;
+import org.eclipse.jetty.server.handler.AbstractHandler;
+import org.eclipse.jetty.server.handler.ContextHandler;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.springframework.test.util.ReflectionTestUtils;
+
+import com.ctrip.framework.apollo.BaseIntegrationTest;
+import com.ctrip.framework.apollo.Config;
+import com.ctrip.framework.apollo.ConfigChangeListener;
+import com.ctrip.framework.apollo.ConfigService;
+import com.ctrip.framework.apollo.build.ApolloInjector;
+import com.ctrip.framework.apollo.core.ConfigConsts;
+import com.ctrip.framework.apollo.core.dto.ApolloConfig;
+import com.ctrip.framework.apollo.core.dto.ApolloConfigNotification;
+import com.ctrip.framework.apollo.core.utils.ClassLoaderUtil;
+import com.ctrip.framework.apollo.internals.RemoteConfigLongPollService;
+import com.ctrip.framework.apollo.model.ConfigChangeEvent;
+import com.google.common.base.Joiner;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.util.concurrent.SettableFuture;
 
 /**
  * @author Jason Song(song_s@ctrip.com)
@@ -49,20 +51,28 @@ public class ConfigIntegrationTest extends BaseIntegrationTest {
   private String someReleaseKey;
   private File configDir;
   private String defaultNamespace;
+  private String someOtherNamespace;
+  private RemoteConfigLongPollService remoteConfigLongPollService;
 
   @Before
   public void setUp() throws Exception {
     super.setUp();
 
     defaultNamespace = ConfigConsts.NAMESPACE_APPLICATION;
+    someOtherNamespace = "someOtherNamespace";
     someReleaseKey = "1";
     configDir = new File(ClassLoaderUtil.getClassPath() + "config-cache");
+    if (configDir.exists()) {
+      configDir.delete();
+    }
     configDir.mkdirs();
+    remoteConfigLongPollService = ApolloInjector.getInstance(RemoteConfigLongPollService.class);
   }
 
   @Override
   @After
   public void tearDown() throws Exception {
+    ReflectionTestUtils.invokeMethod(remoteConfigLongPollService, "stopLongPollingRefresh");
     recursiveDelete(configDir);
     super.tearDown();
   }
@@ -243,7 +253,9 @@ public class ConfigIntegrationTest extends BaseIntegrationTest {
     ContextHandler configHandler = mockConfigServerHandler(HttpServletResponse.SC_OK, apolloConfig);
     ContextHandler pollHandler =
         mockPollNotificationHandler(pollTimeoutInMS, HttpServletResponse.SC_OK,
-            new ApolloConfigNotification(apolloConfig.getNamespaceName(), someNotificationId), false);
+            Lists.newArrayList(
+                new ApolloConfigNotification(apolloConfig.getNamespaceName(), someNotificationId)),
+            false);
 
     startServerWithHandlers(configHandler, pollHandler);
 
@@ -261,17 +273,112 @@ public class ConfigIntegrationTest extends BaseIntegrationTest {
 
     apolloConfig.getConfigurations().put(someKey, anotherValue);
 
-    longPollFinished.get(pollTimeoutInMS * 10, TimeUnit.MILLISECONDS);
+    longPollFinished.get(pollTimeoutInMS * 20, TimeUnit.MILLISECONDS);
 
     assertEquals(anotherValue, config.getProperty(someKey, null));
+  }
+
+  @Test
+  public void testLongPollRefreshWithMultipleNamespacesAndOnlyOneNamespaceNotified() throws Exception {
+    final String someKey = "someKey";
+    final String someValue = "someValue";
+    final String anotherValue = "anotherValue";
+    long someNotificationId = 1;
+
+    long pollTimeoutInMS = 50;
+    Map<String, String> configurations = Maps.newHashMap();
+    configurations.put(someKey, someValue);
+    ApolloConfig apolloConfig = assembleApolloConfig(configurations);
+    ContextHandler configHandler = mockConfigServerHandler(HttpServletResponse.SC_OK, apolloConfig);
+    ContextHandler pollHandler =
+        mockPollNotificationHandler(pollTimeoutInMS, HttpServletResponse.SC_OK,
+            Lists.newArrayList(
+                new ApolloConfigNotification(apolloConfig.getNamespaceName(), someNotificationId)),
+            false);
+
+    startServerWithHandlers(configHandler, pollHandler);
+
+    Config someOtherConfig = ConfigService.getConfig(someOtherNamespace);
+    Config config = ConfigService.getAppConfig();
+    assertEquals(someValue, config.getProperty(someKey, null));
+    assertEquals(someValue, someOtherConfig.getProperty(someKey, null));
+
+    final SettableFuture<Boolean> longPollFinished = SettableFuture.create();
+
+    config.addChangeListener(new ConfigChangeListener() {
+      @Override
+      public void onChange(ConfigChangeEvent changeEvent) {
+        longPollFinished.set(true);
+      }
+    });
+
+    apolloConfig.getConfigurations().put(someKey, anotherValue);
+
+    longPollFinished.get(5000, TimeUnit.MILLISECONDS);
+
+    assertEquals(anotherValue, config.getProperty(someKey, null));
+
+    TimeUnit.MILLISECONDS.sleep(pollTimeoutInMS * 10);
+    assertEquals(someValue, someOtherConfig.getProperty(someKey, null));
+  }
+
+  @Test
+  public void testLongPollRefreshWithMultipleNamespacesAndMultipleNamespaceNotified() throws Exception {
+    final String someKey = "someKey";
+    final String someValue = "someValue";
+    final String anotherValue = "anotherValue";
+    long someNotificationId = 1;
+
+    long pollTimeoutInMS = 50;
+    Map<String, String> configurations = Maps.newHashMap();
+    configurations.put(someKey, someValue);
+    ApolloConfig apolloConfig = assembleApolloConfig(configurations);
+    ContextHandler configHandler = mockConfigServerHandler(HttpServletResponse.SC_OK, apolloConfig);
+    ContextHandler pollHandler =
+        mockPollNotificationHandler(pollTimeoutInMS, HttpServletResponse.SC_OK,
+            Lists.newArrayList(
+                new ApolloConfigNotification(apolloConfig.getNamespaceName(), someNotificationId),
+                new ApolloConfigNotification(someOtherNamespace, someNotificationId)),
+            false);
+
+    startServerWithHandlers(configHandler, pollHandler);
+
+    Config config = ConfigService.getAppConfig();
+    Config someOtherConfig = ConfigService.getConfig(someOtherNamespace);
+    assertEquals(someValue, config.getProperty(someKey, null));
+    assertEquals(someValue, someOtherConfig.getProperty(someKey, null));
+
+    final SettableFuture<Boolean> longPollFinished = SettableFuture.create();
+    final SettableFuture<Boolean> someOtherNamespacelongPollFinished = SettableFuture.create();
+
+    config.addChangeListener(new ConfigChangeListener() {
+      @Override
+      public void onChange(ConfigChangeEvent changeEvent) {
+        longPollFinished.set(true);
+      }
+    });
+    someOtherConfig.addChangeListener(new ConfigChangeListener() {
+      @Override
+      public void onChange(ConfigChangeEvent changeEvent) {
+        someOtherNamespacelongPollFinished.set(true);
+      }
+    });
+
+    apolloConfig.getConfigurations().put(someKey, anotherValue);
+
+    longPollFinished.get(5000, TimeUnit.MILLISECONDS);
+    someOtherNamespacelongPollFinished.get(5000, TimeUnit.MILLISECONDS);
+
+    assertEquals(anotherValue, config.getProperty(someKey, null));
+    assertEquals(anotherValue, someOtherConfig.getProperty(someKey, null));
 
   }
 
   private ContextHandler mockPollNotificationHandler(final long pollResultTimeOutInMS,
                                                      final int statusCode,
-                                                     final ApolloConfigNotification result,
+                                                     final List<ApolloConfigNotification> result,
                                                      final boolean failedAtFirstTime) {
-    ContextHandler context = new ContextHandler("/notifications");
+    ContextHandler context = new ContextHandler("/notifications/v2");
     context.setHandler(new AbstractHandler() {
       AtomicInteger counter = new AtomicInteger(0);
 

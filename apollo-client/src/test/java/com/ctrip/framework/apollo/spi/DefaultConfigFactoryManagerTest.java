@@ -1,28 +1,29 @@
 package com.ctrip.framework.apollo.spi;
 
-import com.ctrip.framework.apollo.Config;
-
-import org.junit.Before;
-import org.junit.Test;
-import org.unidal.lookup.ComponentTestCase;
-
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.hamcrest.core.IsInstanceOf.instanceOf;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
+import org.junit.Before;
+import org.junit.Test;
+
+import com.ctrip.framework.apollo.Config;
+import com.ctrip.framework.apollo.ConfigFile;
+import com.ctrip.framework.apollo.build.MockInjector;
+import com.ctrip.framework.apollo.core.enums.ConfigFileFormat;
+
 /**
  * @author Jason Song(song_s@ctrip.com)
  */
-public class DefaultConfigFactoryManagerTest extends ComponentTestCase {
+public class DefaultConfigFactoryManagerTest {
   private DefaultConfigFactoryManager defaultConfigFactoryManager;
 
   @Before
   public void setUp() throws Exception {
-    super.setUp();
-    defineComponent(ConfigRegistry.class, MockConfigRegistry.class);
-    defaultConfigFactoryManager =
-        (DefaultConfigFactoryManager) lookup(ConfigFactoryManager.class);
+    MockInjector.reset();
+    MockInjector.setInstance(ConfigRegistry.class, new MockConfigRegistry());
+    defaultConfigFactoryManager = new DefaultConfigFactoryManager();
   }
 
   @Test
@@ -36,7 +37,7 @@ public class DefaultConfigFactoryManagerTest extends ComponentTestCase {
   @Test
   public void testGetFactoryFromNamespace() throws Exception {
     String someNamespace = "someName";
-    defineComponent(ConfigFactory.class, someNamespace, SomeConfigFactory.class);
+    MockInjector.setInstance(ConfigFactory.class, someNamespace, new SomeConfigFactory());
 
     ConfigFactory result = defaultConfigFactoryManager.getFactory(someNamespace);
 
@@ -47,7 +48,7 @@ public class DefaultConfigFactoryManagerTest extends ComponentTestCase {
   @Test
   public void testGetFactoryFromNamespaceMultipleTimes() throws Exception {
     String someNamespace = "someName";
-    defineComponent(ConfigFactory.class, someNamespace, SomeConfigFactory.class);
+    MockInjector.setInstance(ConfigFactory.class, someNamespace, new SomeConfigFactory());
 
     ConfigFactory result = defaultConfigFactoryManager.getFactory(someNamespace);
     ConfigFactory anotherResult = defaultConfigFactoryManager.getFactory(someNamespace);
@@ -60,7 +61,7 @@ public class DefaultConfigFactoryManagerTest extends ComponentTestCase {
   @Test
   public void testGetFactoryFromDefault() throws Exception {
     String someNamespace = "someName";
-    defineComponent(ConfigFactory.class, AnotherConfigFactory.class);
+    MockInjector.setInstance(ConfigFactory.class, new AnotherConfigFactory());
 
     ConfigFactory result = defaultConfigFactoryManager.getFactory(someNamespace);
 
@@ -75,6 +76,12 @@ public class DefaultConfigFactoryManagerTest extends ComponentTestCase {
       public Config create(String namespace) {
         return null;
       }
+
+      @Override
+      public ConfigFile createConfigFile(String namespace, ConfigFileFormat configFileFormat) {
+        return null;
+      }
+
     };
 
     @Override
@@ -96,11 +103,21 @@ public class DefaultConfigFactoryManagerTest extends ComponentTestCase {
     public Config create(String namespace) {
       return null;
     }
+
+    @Override
+    public ConfigFile createConfigFile(String namespace, ConfigFileFormat configFileFormat) {
+      return null;
+    }
   }
 
   public static class AnotherConfigFactory implements ConfigFactory {
     @Override
     public Config create(String namespace) {
+      return null;
+    }
+
+    @Override
+    public ConfigFile createConfigFile(String namespace, ConfigFileFormat configFileFormat) {
       return null;
     }
   }

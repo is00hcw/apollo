@@ -1,6 +1,6 @@
 package com.ctrip.framework.apollo.portal.entity.vo;
 
-import com.ctrip.framework.apollo.core.dto.ClusterDTO;
+import com.ctrip.framework.apollo.common.dto.ClusterDTO;
 import com.ctrip.framework.apollo.core.enums.Env;
 
 import java.util.List;
@@ -9,7 +9,7 @@ public class EnvClusterInfo {
   private Env env;
   private List<ClusterDTO> clusters;
 
-  public EnvClusterInfo(Env env){
+  public EnvClusterInfo(Env env) {
     this.env = env;
   }
 

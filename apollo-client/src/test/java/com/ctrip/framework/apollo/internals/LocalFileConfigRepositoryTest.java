@@ -1,23 +1,5 @@
 package com.ctrip.framework.apollo.internals;
 
-import com.google.common.base.Charsets;
-import com.google.common.base.Joiner;
-import com.google.common.io.Files;
-
-import com.ctrip.framework.apollo.core.ConfigConsts;
-import com.ctrip.framework.apollo.util.ConfigUtil;
-
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.mockito.ArgumentCaptor;
-import org.unidal.lookup.ComponentTestCase;
-
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.util.Properties;
-
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
@@ -27,13 +9,30 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.util.Properties;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.ArgumentCaptor;
+
+import com.ctrip.framework.apollo.build.MockInjector;
+import com.ctrip.framework.apollo.core.ConfigConsts;
+import com.ctrip.framework.apollo.util.ConfigUtil;
+import com.google.common.base.Charsets;
+import com.google.common.base.Joiner;
+import com.google.common.io.Files;
+
 /**
  * Created by Jason on 4/9/16.
  */
-public class LocalFileConfigRepositoryTest extends ComponentTestCase {
+public class LocalFileConfigRepositoryTest {
   private File someBaseDir;
   private String someNamespace;
-  private ConfigRepository fallbackRepo;
+  private ConfigRepository upstreamRepo;
   private Properties someProperties;
   private static String someAppId = "someApp";
   private static String someCluster = "someCluster";
@@ -42,7 +41,6 @@ public class LocalFileConfigRepositoryTest extends ComponentTestCase {
 
   @Before
   public void setUp() throws Exception {
-    super.setUp();
     someBaseDir = new File("src/test/resources/config-cache");
     someBaseDir.mkdir();
 
@@ -51,15 +49,15 @@ public class LocalFileConfigRepositoryTest extends ComponentTestCase {
     defaultKey = "defaultKey";
     defaultValue = "defaultValue";
     someProperties.setProperty(defaultKey, defaultValue);
-    fallbackRepo = mock(ConfigRepository.class);
-    when(fallbackRepo.getConfig()).thenReturn(someProperties);
+    upstreamRepo = mock(ConfigRepository.class);
+    when(upstreamRepo.getConfig()).thenReturn(someProperties);
 
-    defineComponent(ConfigUtil.class, MockConfigUtil.class);
+    MockInjector.reset();
+    MockInjector.setInstance(ConfigUtil.class, new MockConfigUtil());
   }
 
   @After
   public void tearDown() throws Exception {
-    super.tearDown();
     recursiveDelete(someBaseDir);
   }
 
@@ -93,7 +91,7 @@ public class LocalFileConfigRepositoryTest extends ComponentTestCase {
     createLocalCachePropertyFile(someProperties);
 
     LocalFileConfigRepository localRepo = new LocalFileConfigRepository(someNamespace);
-    localRepo.initialize(someBaseDir);
+    localRepo.setLocalCacheDir(someBaseDir, true);
     Properties properties = localRepo.getConfig();
 
     assertEquals(someValue, properties.getProperty(someKey));
@@ -108,11 +106,8 @@ public class LocalFileConfigRepositoryTest extends ComponentTestCase {
 
     Files.write(defaultKey + "=" + someValue, file, Charsets.UTF_8);
 
-    LocalFileConfigRepository localRepo = new LocalFileConfigRepository(someNamespace);
-    localRepo.initialize(someBaseDir);
-
-    //when fallback is set, it will try to sync from it
-    localRepo.setUpstreamRepository(fallbackRepo);
+    LocalFileConfigRepository localRepo = new LocalFileConfigRepository(someNamespace, upstreamRepo);
+    localRepo.setLocalCacheDir(someBaseDir, true);
 
     Properties properties = localRepo.getConfig();
 
@@ -123,10 +118,8 @@ public class LocalFileConfigRepositoryTest extends ComponentTestCase {
   public void testLoadConfigWithNoLocalFile() throws Exception {
     LocalFileConfigRepository
         localFileConfigRepository =
-        new LocalFileConfigRepository(someNamespace);
-    localFileConfigRepository.initialize(someBaseDir);
-
-    localFileConfigRepository.setUpstreamRepository(fallbackRepo);
+        new LocalFileConfigRepository(someNamespace, upstreamRepo);
+    localFileConfigRepository.setLocalCacheDir(someBaseDir, true);
 
     Properties result = localFileConfigRepository.getConfig();
 
@@ -138,17 +131,15 @@ public class LocalFileConfigRepositoryTest extends ComponentTestCase {
   @Test
   public void testLoadConfigWithNoLocalFileMultipleTimes() throws Exception {
     LocalFileConfigRepository localRepo =
-        new LocalFileConfigRepository(someNamespace);
-    localRepo.initialize(someBaseDir);
-
-    localRepo.setUpstreamRepository(fallbackRepo);
+        new LocalFileConfigRepository(someNamespace, upstreamRepo);
+    localRepo.setLocalCacheDir(someBaseDir, true);
 
     Properties someProperties = localRepo.getConfig();
 
     LocalFileConfigRepository
         anotherLocalRepoWithNoFallback =
         new LocalFileConfigRepository(someNamespace);
-    anotherLocalRepoWithNoFallback.initialize(someBaseDir);
+    anotherLocalRepoWithNoFallback.setLocalCacheDir(someBaseDir, true);
 
     Properties anotherProperties = anotherLocalRepoWithNoFallback.getConfig();
 
@@ -163,9 +154,8 @@ public class LocalFileConfigRepositoryTest extends ComponentTestCase {
     RepositoryChangeListener someListener = mock(RepositoryChangeListener.class);
 
     LocalFileConfigRepository localFileConfigRepository =
-        new LocalFileConfigRepository(someNamespace);
-    localFileConfigRepository.initialize(someBaseDir);
-    localFileConfigRepository.setUpstreamRepository(fallbackRepo);
+        new LocalFileConfigRepository(someNamespace, upstreamRepo);
+    localFileConfigRepository.setLocalCacheDir(someBaseDir, true);
     localFileConfigRepository.addChangeListener(someListener);
 
     localFileConfigRepository.getConfig();

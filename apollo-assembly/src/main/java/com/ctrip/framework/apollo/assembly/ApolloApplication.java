@@ -1,5 +1,9 @@
 package com.ctrip.framework.apollo.assembly;
 
+import com.ctrip.framework.apollo.adminservice.AdminServiceApplication;
+import com.ctrip.framework.apollo.configservice.ConfigServiceApplication;
+import com.ctrip.framework.apollo.portal.PortalApplication;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.actuate.system.ApplicationPidFileWriter;
@@ -9,10 +13,6 @@ import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfigurat
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.cloud.context.scope.refresh.RefreshScope;
 import org.springframework.context.ConfigurableApplicationContext;
-
-import com.ctrip.framework.apollo.adminservice.AdminServiceApplication;
-import com.ctrip.framework.apollo.configservice.ConfigServiceApplication;
-import com.ctrip.framework.apollo.portal.PortalApplication;
 
 @SpringBootApplication(exclude = {DataSourceAutoConfiguration.class,
     HibernateJpaAutoConfiguration.class})
@@ -51,12 +51,11 @@ public class ApolloApplication {
 
     /**
      * Portal
-     * 
-     * WARNING: Do not start portal at the same pool as configservice, they will conflict on 8080
      */
     if (commonContext.getEnvironment().containsProperty("portal")) {
       ConfigurableApplicationContext portalContext =
-          new SpringApplicationBuilder(PortalApplication.class).parent(commonContext).run(args);
+          new SpringApplicationBuilder(PortalApplication.class).parent(commonContext)
+              .sources(RefreshScope.class).run(args);
       logger.info(portalContext.getId() + " isActive: " + portalContext.isActive());
     }
   }

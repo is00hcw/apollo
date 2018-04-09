@@ -7,14 +7,16 @@ import org.hibernate.annotations.Where;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.Lob;
 import javax.persistence.Table;
 
 @Entity
-@Table(name = "commit")
-@SQLDelete(sql = "Update commit set isDeleted = 1 where id = ?")
+@Table(name = "Commit")
+@SQLDelete(sql = "Update Commit set isDeleted = 1 where id = ?")
 @Where(clause = "isDeleted = 0")
 public class Commit extends BaseEntity {
 
+  @Lob
   @Column(name = "ChangeSets", nullable = false)
   private String changeSets;
 

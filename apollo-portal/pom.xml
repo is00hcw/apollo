@@ -4,7 +4,7 @@
 	<parent>
 		<groupId>com.ctrip.framework.apollo</groupId>
 		<artifactId>apollo</artifactId>
-		<version>0.0.2</version>
+		<version>0.10.2</version>
 		<relativePath>../pom.xml</relativePath>
 	</parent>
 	<modelVersion>4.0.0</modelVersion>
@@ -19,11 +19,6 @@
 			<artifactId>apollo-common</artifactId>
 		</dependency>
 		<dependency>
-			<groupId>com.ctrip.framework.apollo</groupId>
-			<artifactId>apollo-buildtools</artifactId>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
 			<groupId>com.h2database</groupId>
 			<artifactId>h2</artifactId>
 			<scope>test</scope>
@@ -36,6 +31,22 @@
 				<artifactId>spring-boot-maven-plugin</artifactId>
 				<configuration>
 					<executable>true</executable>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>com.spotify</groupId>
+				<artifactId>docker-maven-plugin</artifactId>
+				<version>0.4.13</version>
+				<configuration>
+					<imageName>${project.artifactId}</imageName>
+					<dockerDirectory>src/main/docker</dockerDirectory>
+					<resources>
+						<resource>
+							<targetPath>/</targetPath>
+							<directory>${project.build.directory}</directory>
+							<include>*.zip</include>
+						</resource>
+					</resources>
 				</configuration>
 			</plugin>
 			<plugin>
@@ -61,13 +72,14 @@
 	<profiles>
 		<profile>
 			<id>ctrip</id>
-			<properties>
-				<package.environment>ctrip</package.environment>
-			</properties>
 			<dependencies>
 				<dependency>
-					<groupId>org.jasig.cas.client</groupId>
-					<artifactId>cas-client-core-infosec-credis</artifactId>
+					<groupId>com.ctrip.framework.apollo-sso</groupId>
+					<artifactId>apollo-sso-ctrip</artifactId>
+				</dependency>
+				<dependency>
+					<groupId>com.ctrip.framework.apollo-ctrip-service</groupId>
+					<artifactId>apollo-email-service</artifactId>
 				</dependency>
 			</dependencies>
 		</profile>

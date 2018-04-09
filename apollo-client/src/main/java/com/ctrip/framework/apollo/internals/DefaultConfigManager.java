@@ -1,25 +1,27 @@
 package com.ctrip.framework.apollo.internals;
 
-import com.google.common.collect.Maps;
+import java.util.Map;
 
 import com.ctrip.framework.apollo.Config;
+import com.ctrip.framework.apollo.ConfigFile;
+import com.ctrip.framework.apollo.build.ApolloInjector;
+import com.ctrip.framework.apollo.core.enums.ConfigFileFormat;
 import com.ctrip.framework.apollo.spi.ConfigFactory;
 import com.ctrip.framework.apollo.spi.ConfigFactoryManager;
-
-import org.unidal.lookup.annotation.Inject;
-import org.unidal.lookup.annotation.Named;
-
-import java.util.Map;
+import com.google.common.collect.Maps;
 
 /**
  * @author Jason Song(song_s@ctrip.com)
  */
-@Named(type = ConfigManager.class)
 public class DefaultConfigManager implements ConfigManager {
-  @Inject
   private ConfigFactoryManager m_factoryManager;
 
   private Map<String, Config> m_configs = Maps.newConcurrentMap();
+  private Map<String, ConfigFile> m_configFiles = Maps.newConcurrentMap();
+
+  public DefaultConfigManager() {
+    m_factoryManager = ApolloInjector.getInstance(ConfigFactoryManager.class);
+  }
 
   @Override
   public Config getConfig(String namespace) {
@@ -39,5 +41,26 @@ public class DefaultConfigManager implements ConfigManager {
     }
 
     return config;
+  }
+
+  @Override
+  public ConfigFile getConfigFile(String namespace, ConfigFileFormat configFileFormat) {
+    String namespaceFileName = String.format("%s.%s", namespace, configFileFormat.getValue());
+    ConfigFile configFile = m_configFiles.get(namespaceFileName);
+
+    if (configFile == null) {
+      synchronized (this) {
+        configFile = m_configFiles.get(namespaceFileName);
+
+        if (configFile == null) {
+          ConfigFactory factory = m_factoryManager.getFactory(namespaceFileName);
+
+          configFile = factory.createConfigFile(namespaceFileName, configFileFormat);
+          m_configFiles.put(namespaceFileName, configFile);
+        }
+      }
+    }
+
+    return configFile;
   }
 }

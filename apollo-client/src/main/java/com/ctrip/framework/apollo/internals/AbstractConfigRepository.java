@@ -1,15 +1,14 @@
 package com.ctrip.framework.apollo.internals;
 
-import com.google.common.collect.Lists;
-
-import com.ctrip.framework.apollo.util.ExceptionUtil;
-import com.dianping.cat.Cat;
+import java.util.List;
+import java.util.Properties;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
-import java.util.Properties;
+import com.ctrip.framework.apollo.tracer.Tracer;
+import com.ctrip.framework.apollo.util.ExceptionUtil;
+import com.google.common.collect.Lists;
 
 /**
  * @author Jason Song(song_s@ctrip.com)
@@ -23,7 +22,7 @@ public abstract class AbstractConfigRepository implements ConfigRepository {
       sync();
       return true;
     } catch (Throwable ex) {
-      Cat.logError(ex);
+      Tracer.logEvent("ApolloConfigException", ExceptionUtil.getDetailMessage(ex));
       logger
           .warn("Sync config failed, will retry. Repository {}, reason: {}", this.getClass(), ExceptionUtil
               .getDetailMessage(ex));
@@ -50,7 +49,7 @@ public abstract class AbstractConfigRepository implements ConfigRepository {
       try {
         listener.onRepositoryChange(namespace, newProperties);
       } catch (Throwable ex) {
-        Cat.logError(ex);
+        Tracer.logError(ex);
         logger.error("Failed to invoke repository change listener {}", listener.getClass(), ex);
       }
     }

@@ -1,25 +1,5 @@
 package com.ctrip.framework.apollo;
 
-import com.google.common.base.Charsets;
-import com.google.common.collect.Lists;
-import com.google.common.io.Files;
-import com.google.gson.Gson;
-
-import com.ctrip.framework.apollo.core.enums.Env;
-import com.ctrip.framework.apollo.core.dto.ServiceDTO;
-import com.ctrip.framework.apollo.core.utils.ClassLoaderUtil;
-import com.ctrip.framework.apollo.util.ConfigUtil;
-
-import org.eclipse.jetty.server.Request;
-import org.eclipse.jetty.server.Server;
-import org.eclipse.jetty.server.handler.AbstractHandler;
-import org.eclipse.jetty.server.handler.ContextHandler;
-import org.eclipse.jetty.server.handler.ContextHandlerCollection;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.unidal.lookup.ComponentTestCase;
-
 import java.io.File;
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -30,10 +10,30 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.eclipse.jetty.server.Request;
+import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.handler.AbstractHandler;
+import org.eclipse.jetty.server.handler.ContextHandler;
+import org.eclipse.jetty.server.handler.ContextHandlerCollection;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.BeforeClass;
+
+import com.ctrip.framework.apollo.build.MockInjector;
+import com.ctrip.framework.apollo.core.dto.ServiceDTO;
+import com.ctrip.framework.apollo.core.enums.Env;
+import com.ctrip.framework.apollo.core.utils.ClassLoaderUtil;
+import com.ctrip.framework.apollo.internals.DefaultInjector;
+import com.ctrip.framework.apollo.util.ConfigUtil;
+import com.google.common.base.Charsets;
+import com.google.common.collect.Lists;
+import com.google.common.io.Files;
+import com.google.gson.Gson;
+
 /**
  * @author Jason Song(song_s@ctrip.com)
  */
-public abstract class BaseIntegrationTest extends ComponentTestCase {
+public abstract class BaseIntegrationTest{
   private static final int PORT = findFreePort();
   private static final String metaServiceUrl = "http://localhost:" + PORT;
   private static final String someAppName = "someAppName";
@@ -50,13 +50,12 @@ public abstract class BaseIntegrationTest extends ComponentTestCase {
   @BeforeClass
   public static void beforeClass() throws Exception {
     File apolloEnvPropertiesFile = new File(ClassLoaderUtil.getClassPath(), "apollo-env.properties");
-    Files.write("local.meta=" + metaServiceUrl, apolloEnvPropertiesFile, Charsets.UTF_8);
+    Files.write("dev.meta=" + metaServiceUrl, apolloEnvPropertiesFile, Charsets.UTF_8);
     apolloEnvPropertiesFile.deleteOnExit();
   }
 
   @Before
   public void setUp() throws Exception {
-    super.setUp();
     someAppId = "1003171";
     someClusterName = "someClusterName";
     someDataCenter = "someDC";
@@ -64,9 +63,11 @@ public abstract class BaseIntegrationTest extends ComponentTestCase {
     refreshTimeUnit = TimeUnit.MINUTES;
 
     //as ConfigService is singleton, so we must manually clear its container
-    ConfigService.setContainer(getContainer());
+    ConfigService.reset();
+    MockInjector.reset();
+    MockInjector.setDelegate(new DefaultInjector());
 
-    defineComponent(ConfigUtil.class, MockConfigUtil.class);
+    MockInjector.setInstance(ConfigUtil.class, new MockConfigUtil());
   }
 
   /**
@@ -92,7 +93,6 @@ public abstract class BaseIntegrationTest extends ComponentTestCase {
     if (server != null && server.isStarted()) {
       server.stop();
     }
-    super.tearDown();
   }
 
   protected ContextHandler mockMetaServerHandler() {
@@ -159,7 +159,7 @@ public abstract class BaseIntegrationTest extends ComponentTestCase {
 
     @Override
     public Env getApolloEnv() {
-      return Env.LOCAL;
+      return Env.DEV;
     }
 
     @Override
@@ -175,6 +175,26 @@ public abstract class BaseIntegrationTest extends ComponentTestCase {
     @Override
     public int getLongPollQPS() {
       return 200;
+    }
+
+    @Override
+    public String getDefaultLocalCacheDir() {
+      return ClassLoaderUtil.getClassPath();
+    }
+
+    @Override
+    public long getOnErrorRetryInterval() {
+      return 10;
+    }
+
+    @Override
+    public TimeUnit getOnErrorRetryIntervalTimeUnit() {
+      return TimeUnit.MILLISECONDS;
+    }
+
+    @Override
+    public long getLongPollingInitialDelayInMills() {
+      return 0;
     }
   }
 

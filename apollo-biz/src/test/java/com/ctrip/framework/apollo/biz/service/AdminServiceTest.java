@@ -1,31 +1,22 @@
 package com.ctrip.framework.apollo.biz.service;
 
-import java.util.Date;
-import java.util.List;
-
-import org.junit.Assert;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.SpringApplicationConfiguration;
-import org.springframework.test.annotation.Rollback;
-import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
-import org.springframework.transaction.annotation.Transactional;
-
-import com.ctrip.framework.apollo.biz.BizTestConfiguration;
-import com.ctrip.framework.apollo.common.entity.App;
+import com.ctrip.framework.apollo.biz.AbstractIntegrationTest;
 import com.ctrip.framework.apollo.biz.entity.Audit;
 import com.ctrip.framework.apollo.biz.entity.Cluster;
 import com.ctrip.framework.apollo.biz.entity.Namespace;
 import com.ctrip.framework.apollo.biz.repository.AppRepository;
+import com.ctrip.framework.apollo.common.entity.App;
+import com.ctrip.framework.apollo.common.exception.ServiceException;
 import com.ctrip.framework.apollo.core.ConfigConsts;
-import com.ctrip.framework.apollo.core.exception.ServiceException;
 
-@RunWith(SpringJUnit4ClassRunner.class)
-@SpringApplicationConfiguration(classes = BizTestConfiguration.class)
-@Transactional
-@Rollback
-public class AdminServiceTest {
+import org.junit.Assert;
+import org.junit.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+
+import java.util.Date;
+import java.util.List;
+
+public class AdminServiceTest extends AbstractIntegrationTest{
 
   @Autowired
   private AdminService adminService;
@@ -37,7 +28,7 @@ public class AdminServiceTest {
   private AppRepository appRepository;
 
   @Autowired
-  private ClusterService clsuterService;
+  private ClusterService clusterService;
 
   @Autowired
   private NamespaceService namespaceService;
@@ -58,7 +49,7 @@ public class AdminServiceTest {
     app = adminService.createNewApp(app);
     Assert.assertEquals(appId, app.getAppId());
 
-    List<Cluster> clusters = clsuterService.findClusters(app.getAppId());
+    List<Cluster> clusters = clusterService.findParentClusters(app.getAppId());
     Assert.assertEquals(1, clusters.size());
     Assert.assertEquals(ConfigConsts.CLUSTER_NAME_DEFAULT, clusters.get(0).getName());
 

@@ -1,34 +1,39 @@
 package com.ctrip.framework.apollo.util;
 
-import com.google.common.base.Preconditions;
-import com.google.common.base.Strings;
+import java.util.concurrent.TimeUnit;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.ctrip.framework.apollo.core.ConfigConsts;
 import com.ctrip.framework.apollo.core.MetaDomainConsts;
 import com.ctrip.framework.apollo.core.enums.Env;
 import com.ctrip.framework.apollo.core.enums.EnvUtils;
+import com.ctrip.framework.apollo.exceptions.ApolloConfigException;
 import com.ctrip.framework.foundation.Foundation;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.unidal.lookup.annotation.Named;
-import org.unidal.net.Networks;
-
-import java.util.concurrent.TimeUnit;
+import com.google.common.base.Strings;
 
 /**
  * @author Jason Song(song_s@ctrip.com)
  */
-@Named(type = ConfigUtil.class)
 public class ConfigUtil {
   private static final Logger logger = LoggerFactory.getLogger(ConfigUtil.class);
   private int refreshInterval = 5;
   private TimeUnit refreshIntervalTimeUnit = TimeUnit.MINUTES;
-  private int connectTimeout = 5000; //5 seconds
-  private int readTimeout = 10000; //10 seconds
+  private int connectTimeout = 1000; //1 second
+  private int readTimeout = 5000; //5 seconds
   private String cluster;
   private int loadConfigQPS = 2; //2 times per second
   private int longPollQPS = 2; //2 times per second
+  //for on error retry
+  private long onErrorRetryInterval = 1;//1 second
+  private TimeUnit onErrorRetryIntervalTimeUnit = TimeUnit.SECONDS;//1 second
+  //for typed config cache of parser result, e.g. integer, double, long, etc.
+  private long maxConfigCacheSize = 500;//500 cache key
+  private long configCacheExpireTime = 1;//1 minute
+  private TimeUnit configCacheExpireTimeUnit = TimeUnit.MINUTES;//1 minute
+  private long longPollingInitialDelayInMills = 2000;//2 seconds
+  private boolean autoUpdateInjectedSpringProperties = true;
 
   public ConfigUtil() {
     initRefreshInterval();
@@ -36,17 +41,23 @@ public class ConfigUtil {
     initReadTimeout();
     initCluster();
     initQPS();
+    initMaxConfigCacheSize();
+    initLongPollingInitialDelayInMills();
+    initAutoUpdateInjectedSpringProperties();
   }
 
   /**
    * Get the app id for the current application.
    *
-   * @return the app id
-   * @throws IllegalStateException if app id is not set
+   * @return the app id or ConfigConsts.NO_APPID_PLACEHOLDER if app id is not available
    */
   public String getAppId() {
     String appId = Foundation.app().getAppId();
-    Preconditions.checkState(appId != null, "app.id is not set");
+    if (Strings.isNullOrEmpty(appId)) {
+      appId = ConfigConsts.NO_APPID_PLACEHOLDER;
+      logger.warn("app.id is not set, please make sure it is set in classpath:/META-INF/app.properties, now apollo " +
+          "will only load public namespace configurations!");
+    }
     return appId;
   }
 
@@ -87,16 +98,22 @@ public class ConfigUtil {
    * Get the current environment.
    *
    * @return the env
-   * @throws IllegalStateException if env is set
+   * @throws ApolloConfigException if env is set
    */
   public Env getApolloEnv() {
     Env env = EnvUtils.transformEnv(Foundation.server().getEnvType());
-    Preconditions.checkState(env != null, "env is not set");
+    if (env == null) {
+      String path = isOSWindows() ? "C:\\opt\\settings\\server.properties" :
+          "/opt/settings/server.properties";
+      String message = String.format("env is not set, please make sure it is set in %s!", path);
+      logger.error(message);
+      throw new ApolloConfigException(message);
+    }
     return env;
   }
 
   public String getLocalIp() {
-    return Networks.forIp().getLocalHostAddress();
+    return Foundation.net().getHostAddress();
   }
 
   public String getMetaServerDomainName() {
@@ -178,5 +195,90 @@ public class ConfigUtil {
 
   public int getLongPollQPS() {
     return longPollQPS;
+  }
+
+  public long getOnErrorRetryInterval() {
+    return onErrorRetryInterval;
+  }
+
+  public TimeUnit getOnErrorRetryIntervalTimeUnit() {
+    return onErrorRetryIntervalTimeUnit;
+  }
+
+  public String getDefaultLocalCacheDir() {
+    String cacheRoot = isOSWindows() ? "C:\\opt\\data\\%s" : "/opt/data/%s";
+    return String.format(cacheRoot, getAppId());
+  }
+
+  public boolean isInLocalMode() {
+    try {
+      Env env = getApolloEnv();
+      return env == Env.LOCAL;
+    } catch (Throwable ex) {
+      //ignore
+    }
+    return false;
+  }
+
+  public boolean isOSWindows() {
+    String osName = System.getProperty("os.name");
+    if (Strings.isNullOrEmpty(osName)) {
+      return false;
+    }
+    return osName.startsWith("Windows");
+  }
+
+  private void initMaxConfigCacheSize() {
+    String customizedConfigCacheSize = System.getProperty("apollo.configCacheSize");
+    if (!Strings.isNullOrEmpty(customizedConfigCacheSize)) {
+      try {
+        maxConfigCacheSize = Long.valueOf(customizedConfigCacheSize);
+      } catch (Throwable ex) {
+        logger.error("Config for apollo.configCacheSize is invalid: {}", customizedConfigCacheSize);
+      }
+    }
+  }
+
+  public long getMaxConfigCacheSize() {
+    return maxConfigCacheSize;
+  }
+
+  public long getConfigCacheExpireTime() {
+    return configCacheExpireTime;
+  }
+
+  public TimeUnit getConfigCacheExpireTimeUnit() {
+    return configCacheExpireTimeUnit;
+  }
+
+  private void initLongPollingInitialDelayInMills() {
+    String customizedLongPollingInitialDelay = System.getProperty("apollo.longPollingInitialDelayInMills");
+    if (!Strings.isNullOrEmpty(customizedLongPollingInitialDelay)) {
+      try {
+        longPollingInitialDelayInMills = Long.valueOf(customizedLongPollingInitialDelay);
+      } catch (Throwable ex) {
+        logger.error("Config for apollo.longPollingInitialDelayInMills is invalid: {}", customizedLongPollingInitialDelay);
+      }
+    }
+  }
+
+  public long getLongPollingInitialDelayInMills() {
+    return longPollingInitialDelayInMills;
+  }
+
+  private void initAutoUpdateInjectedSpringProperties() {
+    // 1. Get from System Property
+    String enableAutoUpdate = System.getProperty("apollo.autoUpdateInjectedSpringProperties");
+    if (Strings.isNullOrEmpty(enableAutoUpdate)) {
+      // 2. Get from app.properties
+      enableAutoUpdate = Foundation.app().getProperty("apollo.autoUpdateInjectedSpringProperties", null);
+    }
+    if (!Strings.isNullOrEmpty(enableAutoUpdate)) {
+      autoUpdateInjectedSpringProperties = Boolean.parseBoolean(enableAutoUpdate.trim());
+    }
+  }
+
+  public boolean isAutoUpdateInjectedSpringPropertiesEnabled() {
+    return autoUpdateInjectedSpringProperties;
   }
 }

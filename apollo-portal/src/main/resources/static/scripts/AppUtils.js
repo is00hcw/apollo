@@ -1,28 +1,66 @@
-appUtil.service('AppUtil', ['toastr', function (toastr) {
+appUtil.service('AppUtil', ['toastr', '$window', '$q', function (toastr, $window, $q) {
 
+    function parseErrorMsg(response) {
+        if (response.status == -1) {
+            return "您的登录信息已过期,请刷新页面后重试";
+        }
+        var msg = "Code:" + response.status;
+        if (response.data.message != null) {
+            msg += " Msg:" + response.data.message;
+        }
+        return msg;
+    }
+
+    function ajax(resource, requestParams, requestBody) {
+        var d = $q.defer();
+        if (requestBody) {
+            resource(requestParams, requestBody, function (result) {
+                         d.resolve(result);
+                     },
+                     function (result) {
+                         d.reject(result);
+                     });
+        } else {
+            resource(requestParams, function (result) {
+                         d.resolve(result);
+                     },
+                     function (result) {
+                         d.reject(result);
+                     });
+        }
+
+        return d.promise;
+    }
+    
     return {
-        errorMsg: function (response) {
-            if (response.status == -1) {
-                return "您的登录信息已过期,请重新登录";
-            }
-            var msg = "Code:" + response.status;
-            if (response.data.message != null) {
-                msg += " Msg:" + response.data.message;
-            }
-            return msg;
+        errorMsg: parseErrorMsg,
+        ajax: ajax,
+        showErrorMsg: function (response, title) {
+            toastr.error(parseErrorMsg(response), title);
         },
-        parseParams: function (path) {
-            if (!path) {
-                return {};
+        parseParams: function (query, notJumpToHomePage) {
+            if (!query) {
+                //如果不传这个参数或者false则返回到首页(参数出错)
+                if (!notJumpToHomePage) {
+                    $window.location.href = '/index.html';
+                } else {
+                    return {};
+                }
             }
-            if (path.indexOf('/') == 0) {
-                path = path.substring(1, path.length);
+            if (query.indexOf('/') == 0) {
+                query = query.substring(1, query.length);
             }
-            var params = path.split("&");
+
+            var anchorIndex = query.indexOf('#');
+            if (anchorIndex >= 0) {
+                query = query.substring(0, anchorIndex);
+            }
+
+            var params = query.split("&");
             var result = {};
             params.forEach(function (param) {
                 var kv = param.split("=");
-                result[kv[0]] = kv[1];
+                result[kv[0]] = decodeURIComponent(kv[1]);
             });
             return result;
         },
@@ -36,6 +74,15 @@ appUtil.service('AppUtil', ['toastr', function (toastr) {
                 }
             });
             return data;
+        },
+        showModal: function (modal) {
+            $(modal).modal("show");
+        },
+        hideModal: function (modal) {
+            $(modal).modal("hide");
+        },
+        checkIPV4:function (ip) {
+            return /^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^(([a-zA-Z]|[a-zA-Z][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z]|[A-Za-z][A-Za-z0-9\-]*[A-Za-z0-9])$|^\s*((([0-9A-Fa-f]{1,4}:){7}([0-9A-Fa-f]{1,4}|:))|(([0-9A-Fa-f]{1,4}:){6}(:[0-9A-Fa-f]{1,4}|((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9A-Fa-f]{1,4}:){5}(((:[0-9A-Fa-f]{1,4}){1,2})|:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9A-Fa-f]{1,4}:){4}(((:[0-9A-Fa-f]{1,4}){1,3})|((:[0-9A-Fa-f]{1,4})?:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){3}(((:[0-9A-Fa-f]{1,4}){1,4})|((:[0-9A-Fa-f]{1,4}){0,2}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){2}(((:[0-9A-Fa-f]{1,4}){1,5})|((:[0-9A-Fa-f]{1,4}){0,3}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){1}(((:[0-9A-Fa-f]{1,4}){1,6})|((:[0-9A-Fa-f]{1,4}){0,4}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(:(((:[0-9A-Fa-f]{1,4}){1,7})|((:[0-9A-Fa-f]{1,4}){0,5}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:)))(%.+)?\s*$/.test(ip);
         }
     }
 }]);

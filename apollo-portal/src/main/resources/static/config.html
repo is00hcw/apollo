@@ -3,9 +3,11 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>apollo</title>
+    <title>Apollo配置中心</title>
+    <link rel="icon" href="./img/config.png">
     <link rel="stylesheet" type="text/css" href="vendor/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" type="text/css" href="vendor/angular/angular-toastr-1.4.1.min.css">
+    <link rel="stylesheet" type="text/css" href="vendor/select2/select2.min.css">
     <link rel="stylesheet" type="text/css" media='all' href="vendor/angular/loading-bar.min.css">
     <link rel="stylesheet" type="text/css" href="styles/common-style.css">
 </head>
@@ -14,542 +16,331 @@
 
 <apollonav></apollonav>
 
-<div class="container-fluid apollo-container app" id="config-info">
-
-    <!--具体配置信息-->
-    <div class="row config-info-container">
-
-        <!--tag导航-->
-        <div class="col-md-3" ng-controller="ConfigBaseInfoController">
-            <div id="treeview"></div>
-            <!--app info-->
-            <section class="panel">
-                <header class="panel-heading">
-                    <img src="img/info.png" class="i-25-20"/> 应用信息
-                            <span class="tools pull-right">
-                                <a href="javascript:;" class="icon-chevron-down"></a>
-                            </span>
-                </header>
-                <div class="panel-body">
-                    <table class="project-info">
-                        <tbody>
-                        <tr>
-                            <th>AppId:</th>
-                            <td ng-bind="appBaseInfo.appId"></td>
-                        </tr>
-                        <tr>
-                            <th>应用名:</th>
-                            <td ng-bind="appBaseInfo.name"></td>
-                        </tr>
-                        <tr>
-                            <th>部门:</th>
-                            <td ng-bind="appBaseInfo.orgInfo"></td>
-                        </tr>
-                        <tr>
-                            <th>负责人:</th>
-                            <td ng-bind="appBaseInfo.ownerName"></td>
-                        </tr>
-                        <tr>
-                            <th>负责人Email:</th>
-                            <td ng-bind="appBaseInfo.ownerEmail"></td>
-                        </tr>
-                        <tr ng-show="missEnvs.length > 0">
-                            <th>缺失的环境:</th>
-                            <td>
-                                        <span ng-repeat="env in missEnvs" ng-bind="env">
-                                        </span>
-                            </td>
-                        </tr>
-                        </tbody>
-                    </table>
-
-                </div>
-            </section>
-            <a class="list-group-item" ng-show="missEnvs.length > 0" ng-click="createAppInMissEnv()">
-                <div class="row">
-                    <div class="col-md-2"><img src="img/plus-orange.png" class="i-20"></div>
-                    <div class="col-md-10 hidden-xs">
-                        <p class="btn-title">补缺环境</p>
-                    </div>
-                </div>
-            </a>
-            <a class="list-group-item" href="#" disabled="disabled" ng-show="false">
-                <div class="row">
-                    <div class="col-md-2"><img src="../img/plus-orange.png" class="i-20"></div>
-                    <div class="col-md-10 hidden-xs">
-                        <p class="btn-title">添加集群</p>
-                    </div>
-
-                </div>
-            </a>
-            <a class="list-group-item" href="namespace.html?#/appid={{pageContext.appId}}&type=link"
-               ng-show="hasCreateNamespacePermission">
-                <div class="row">
-                    <div class="col-md-2"><img src="img/plus-orange.png" class="i-20"></div>
-                    <div class="col-md-10 hidden-xs">
-                        <p class="btn-title">添加Namespace</p>
-                    </div>
-                </div>
-            </a>
-            <a class="list-group-item" href="/app/role.html?#/appid={{pageContext.appId}}"
-               ng-show="hasAssignUserPermission">
-                <div class="row">
-                    <div class="col-md-2"><img src="img/user_manage.png" class="i-20"></div>
-                    <div class="col-md-10 hidden-xs">
-                        <p class="btn-title">项目负责人</p>
-                    </div>
-                </div>
-            </a>
-            </section>
-
-            <!--create env modal-->
-
+<div id="config-info" class="apollo-container app">
+    <div ng-controller="ConfigBaseInfoController">
+        <div class="J_appNotFound hidden row text-center app-not-found" ng-show="notFoundApp">
+            <img src="img/404.png">
+            <br>
+            <p>
+                <span ng-bind="pageContext.appId"></span> 不存在，<a href="/app.html">点击创建</a>
+            </p>
         </div>
 
-        <!--namespaces-->
-        <div class="col-md-9 config-item-container hide" ng-controller="ConfigNamespaceController">
-            <div ng-repeat="namespace in namespaces">
-                <div class="panel">
+        <div class="side-bar"
+             ng-class="{'position-absolute': viewMode == 1, 'position-fixed': viewMode == 2}">
+            <div class="J_appFound hidden"
+                 ng-show="!notFoundApp && (viewMode == 1 || (viewMode == 2 && showSideBar))">
+
+                <!--env list-->
+                <section class="panel">
                     <header class="panel-heading">
-                        <div class="row">
-                            <div class="col-md-4">
-                                <b ng-bind="namespace.namespace.namespaceName" style="font-size: 20px;"></b>
-                                <span class="label label-primary" ng-show="namespace.itemModifiedCnt > 0">有修改
-                                <span class="badge label" ng-bind="namespace.itemModifiedCnt"></span></span>
-
-                            </div>
-                            <div class="col-md-8 text-right">
-                                <button type="button"
-                                        class="btn btn-default btn-sm J_tableview_btn"
-                                        ng-disabled="namespace.isTextEditing"
-                                        ng-click="prepareReleaseNamespace(namespace)">
-                                    <img src="img/release.png">
-                                    发布
-                                    <!--ng-show="namespace.hasReleasePermission"-->
-                                </button>
-                                <button type="button"
-                                        class="btn btn-default btn-sm J_tableview_btn" disabled
-                                        ng-show="namespace.hasReleasePermission">
-                                    <img src="img/rollback.png">
-                                    回滚
-                                </button>
-                                <button type="button" class="btn btn-default btn-sm J_tableview_btn"
-                                        href="/namespace/role.html?#/appid={{pageContext.appId}}&namespaceName={{namespace.namespace.namespaceName}}"
-                                        ng-show="hasAssignUserPermission">
-                                    <img src="img/release-history.png">
-                                    发布历史
-                                </button>
-                                <a type="button" class="btn btn-default btn-sm J_tableview_btn"
-                                   href="/namespace/role.html?#/appid={{pageContext.appId}}&namespaceName={{namespace.namespace.namespaceName}}"
-                                   ng-show="hasAssignUserPermission">
-                                    <img src="img/assign.png">
-                                    授权
-                                </a>
-                                <a type="button" class="btn btn-default btn-sm J_tableview_btn"
-                                   href="config/sync.html?#/appid={{pageContext.appId}}&env={{pageContext.env}}&clusterName={{pageContext.clusterName}}&namespaceName={{namespace.namespace.namespaceName}}"
-                                   ng-show="hasAssignUserPermission">
-                                    <img src="img/sync.png">
-                                    同步配置
-                                </a>
-                            </div>
-                        </div>
+                        环境列表
+                        <span class="pull-right"
+                              data-tooltip="tooltip" data-placement="bottom" title="通过切换环境、集群来管理不同环境、集群的配置">
+                                    <img src="img/question.png" class="i-20"/>
+                            </span>
                     </header>
+                    <div id="treeview" class="no-radius"></div>
+                </section>
 
-                    <header class="panel-heading second-panel-heading" style="border-bottom: 0px">
-                        <div class="row">
-                            <div class="col-md-5 pull-left">
-                                <ul class="nav nav-tabs">
-                                    <li role="presentation" ng-click="switchView(namespace, 'table')">
-                                        <a ng-class="{node_active:namespace.viewType == 'table'}">
-                                            <img src="img/table.png">
-                                            表格
-                                        </a>
-                                    </li>
-                                    <li role="presentation" ng-click="switchView(namespace, 'text')">
-                                        <a ng-class="{node_active:namespace.viewType == 'text'}">
-                                            <img src="img/text.png">
-                                            文本
-                                        </a>
-                                    </li>
-                                    <li role="presentation" ng-click="switchView(namespace, 'history')">
-                                        <a ng-class="{node_active:namespace.viewType == 'history'}">
-                                            <img src="img/change.png">
-                                            更改历史
-                                        </a>
-                                    </li>
-                                </ul>
-                            </div>
-                            <div class="col-md-7 text-right">
-                                <a data-tooltip="tooltip" data-placement="bottom" title="取消修改"
-                                   ng-show="namespace.isTextEditing && namespace.viewType == 'text'"
-                                   ng-click="toggleTextEditStatus(namespace)">
-                                    <img src="img/cancel.png" class="ns_btn">
-                                </a>
-                                <a data-tooltip="tooltip" data-placement="bottom" title="修改配置"
-                                   ng-show="!namespace.isTextEditing && namespace.viewType == 'text' && namespace.hasModifyPermission"
-                                   ng-click="toggleTextEditStatus(namespace)">
-                                    <img src="img/edit.png" class="ns_btn">
+
+                <!--app info-->
+                <section class="panel">
+                    <header class="panel-heading">
+                        项目信息
+                            <span class="pull-right">
+
+                                <a href="/app/setting.html?#/appid={{pageContext.appId}}"
+                                   style="margin-right: 5px;text-decoration:none;">
+                                    <img src="img/edit.png" class="i-20 cursor-pointer"
+                                         data-tooltip="tooltip" data-placement="bottom" title="修改项目基本信息"/>
                                 </a>
 
-                                &nbsp;
-                                <a data-tooltip="tooltip" data-placement="bottom" title="提交修改"
-                                   data-toggle="modal" data-target="#commitModal"
-                                   ng-show="namespace.isTextEditing && namespace.viewType == 'text'"
-                                   ng-click="setCommitNamespace(namespace)">
-                                    <img src="img/submit.png" class="ns_btn">
-                                </a>
+                                <img src="img/unlike.png" class="i-20 cursor-pointer"
+                                     ng-if="!favoriteId" ng-click="addFavorite()"
+                                     data-tooltip="tooltip" data-placement="bottom" title="收藏"/>
 
-                                <button type="button" class="btn btn-default btn-sm"
-                                        ng-show="namespace.viewType == 'table' && namespace.hasModifyPermission"
-                                        data-toggle="modal" data-target="#itemModal"
-                                        ng-click="createItem(namespace)">
-                                    <img src="img/plus.png">
-                                    新增配置
-                                </button>
-
-                            </div>
-                        </div>
+                                <img src="img/like.png" class="i-20 cursor-pointer"
+                                     ng-if="favoriteId" ng-click="deleteFavorite()"
+                                     data-tooltip="tooltip" data-placement="bottom" title="取消收藏"/>
+                            </span>
                     </header>
-                    <!--text view-->
-                    <!--只读模式下的文本内容,不替换换行符-->
-                            <textarea class="form-control" rows="{{namespace.itemCnt}}" style="border-radius: 0px"
-                                      ng-show="namespace.viewType == 'text' && !namespace.isTextEditing"
-                                      ng-disabled="!namespace.isTextEditing" ng-model="namespace.text"
-                                      ng-bind="namespace.text">
-                                </textarea>
-                    <!--编辑状态下的文本内容,会过滤掉换行符-->
-                            <textarea class="form-control" rows="{{namespace.itemCnt}}" style="border-radius: 0px"
-                                      ng-show="namespace.viewType == 'text' && namespace.isTextEditing"
-                                      ng-disabled="!namespace.isTextEditing" ng-model="namespace.editText"
-                                      ng-bind="namespace.editText">
-                                </textarea>
-
-                    <!--table view-->
-                    <div class="namespace-view-table">
-                        <table class="table table-bordered table-striped text-center table-hover"
-                               ng-show="namespace.viewType == 'table' && namespace.items.length > 0">
-                            <thead>
+                    <div class="panel-body">
+                        <table class="project-info">
+                            <tbody class="text-left">
                             <tr>
-                                <th>
-                                    Key
-                                </th>
-                                <th>
-                                    value
-                                </th>
-                                <th>
-                                    备注
-                                </th>
-                                <th>
-                                    最后修改人
-                                </th>
-                                <th>
-                                    最后修改时间
-                                </th>
-                                <th>
-                                    操作
-                                </th>
+                                <th>AppId:</th>
+                                <td ng-bind="appBaseInfo.appId"></td>
                             </tr>
-                            </thead>
-                            <tbody>
-
-                            <tr ng-repeat="config in namespace.items" ng-class="{warning:config.isModified}"
-                                ng-if="config.item.key && config.item.lastModifiedBy">
-                                <td width="20%" title="{{config.item.key}}">
-                                    <span ng-bind="config.item.key | limitTo: 250"></span>
-                                    <span ng-bind="config.item.key.length > 250 ? '...' :''"></span>
+                            <tr>
+                                <th>应用名:</th>
+                                <td>
+                                    <small ng-bind="appBaseInfo.name"></small>
                                 </td>
-                                <td width="25%" title="{{config.item.value}}">
-                                    <span ng-bind="config.item.value | limitTo: 250"></span>
-                                    <span ng-bind="config.item.value.length > 250 ? '...': ''"></span>
+                            </tr>
+                            <tr>
+                                <th>部门:</th>
+                                <td ng-bind="appBaseInfo.orgInfo"></td>
+                            </tr>
+                            <tr>
+                                <th>负责人:</th>
+                                <td ng-bind="appBaseInfo.ownerName"></td>
+                            </tr>
+                            <tr>
+                                <th>邮箱:</th>
+                                <td>
+                                    <small ng-bind="appBaseInfo.ownerEmail"></small>
                                 </td>
-                                <td width="20%" title="{{config.item.comment}}">
-                                    <span ng-bind="config.item.comment | limitTo: 250"></span>
-                                    <span ng-bind="config.item.comment.length > 250 ?'...' : ''"></span>
+                            </tr>
+                            <tr ng-show="missEnvs.length > 0">
+                                <th>缺失的环境:</th>
+                                <td>
+                                <span ng-repeat="env in missEnvs" ng-bind="env">
+                                </span>
                                 </td>
-                                <td width="10%" ng-bind="config.item.lastModifiedBy">
-                                </td>
-                                <td width="15%"
-                                    ng-bind="config.item.lastModifiedTime | date: 'yyyy-MM-dd HH:mm:ss'">
-                                </td>
-
-                                <td width="10%">
-                                    <img src="img/edit.png" data-tooltip="tooltip" data-placement="bottom" title="修改"
-                                         data-toggle="modal" data-target="#itemModal"
-                                         ng-click="editItem(namespace, config.item)"
-                                         ng-show="namespace.hasModifyPermission">
-                                    <img style="margin-left: 5px;" src="img/cancel.png" data-toggle="modal" data-target="#deleteConfirmDialog"
-                                         data-tooltip="tooltip" data-placement="bottom" title="删除"
-                                         ng-click="preDeleteItem(namespace, config.item.id)"
-                                         ng-show="namespace.hasModifyPermission">
-                                </td>
-
                             </tr>
                             </tbody>
                         </table>
+
                     </div>
+                </section>
 
-                    <!--历史修改视图-->
-                    <div class="J_historyview history-view"
-                         ng-show="namespace.viewType == 'history'">
-                        <div class="row">
-                            <div class="col-md-11 col-md-offset-1 list" style="">
-                                <div class="media">
-                                    <img src="img/history.png"/>
+                <!--operation entrance-->
+                <section>
+                    <apolloentrance apollo-title="'管理项目'" apollo-img-src="'project-manage'"
+                                    apollo-href="'/app/setting.html?#/appid=' + pageContext.appId"></apolloentrance>
 
-                                    <div class="row">
-                                        <div class="col-md-10"><h5 class="media-heading">2016-02-23
-                                            12:23
-                                            王玉</h5>
-
-                                            <p>
-                                                修改comment
-                                            </p></div>
-                                        <div class="col-md-2 text-right">
-                                            <button class="btn btn-default" type="submit">查看修改内容
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <hr>
-                                </div>
-                                <div class="media">
-                                    <img src="img/history.png"/>
-
-                                    <div class="row">
-                                        <div class="col-md-10"><h5 class="media-heading">2016-02-23
-                                            12:23
-                                            王玉</h5>
-
-                                            <p>
-                                                修改comment
-                                            </p></div>
-                                        <div class="col-md-2 text-right">
-                                            <button class="btn btn-default" type="submit">查看修改内容
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                    <a class="list-group-item" ng-show="missEnvs.length > 0" ng-click="createAppInMissEnv()">
+                        <div class="row icon-text icon-plus-orange">
+                            <p class="btn-title ng-binding">补缺环境</p>
                         </div>
+                    </a>
 
+                    <apolloentrance apollo-title="'添加集群'" apollo-img-src="'plus-orange'"
+                                    apollo-href="'cluster.html?#/appid=' + pageContext.appId"
+                                    ng-show="hasCreateClusterPermission"></apolloentrance>
+
+                    <div class="list-group-item cursor-pointer hover" ng-click="showMasterPermissionTips()"
+                         ng-show="!hasCreateClusterPermission">
+                        <div class="row icon-text icon-plus-orange">
+                            <p class="btn-title">添加集群</p>
+                        </div>
                     </div>
-                </div>
+
+                    <apolloentrance apollo-title="'添加Namespace'" apollo-img-src="'plus-orange'"
+                                    apollo-href="'namespace.html?#/appid=' + pageContext.appId"
+                                    ng-show="hasCreateNamespacePermission"></apolloentrance>
+
+                    <div class="list-group-item cursor-pointer hover" ng-click="showMasterPermissionTips()"
+                         ng-show="!hasCreateNamespacePermission">
+                        <div class="row icon-text icon-plus-orange">
+                            <p class="btn-title">添加Namespace</p>
+                        </div>
+                    </div>
+
+
+                </section>
+
             </div>
-
-            <!-- commit modify config modal-->
-            <div class="modal fade" id="commitModal" tabindex="-1" role="dialog">
-                <div class="modal-dialog" role="document">
-                    <div class="modal-content">
-                        <div class="modal-header panel-primary">
-                            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
-                                    aria-hidden="true">&times;</span></button>
-                            <h4 class="modal-title">Commit changes</h4>
-                        </div>
-                        <div class="modal-body">
-                        <textarea rows="4" class="form-control" style="width:570px;"
-                                  placeholder="Add an optional extended description..."
-                                  ng-model="commitComment"></textarea>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-default" data-dismiss="modal">关闭</button>
-                            <button type="button" class="btn btn-primary" data-dismiss="modal"
-                                    ng-click="commitChange()">
-                                提交
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- delete modal-->
-            <apolloconfirmdialog apollo-dialog-id="'deleteConfirmDialog'" apollo-title="'删除配置'"
-                                 apollo-detail="'确定要删除配置吗?'" apollo-confirm="deleteItem"></apolloconfirmdialog>
-
-            <apolloconfirmdialog apollo-dialog-id="'releaseNoPermissionDialog'" apollo-title="'发布'"
-                                 apollo-detail="'您没有发布权限哦~ 请找 ' + masterUsers + ' 分配权限'"
-                                 apollo-show-cancel-btn="false"></apolloconfirmdialog>
-
-            <!--create release modal-->
-            <form class="modal fade form-horizontal" id="releaseModal" tabindex="-1" role="dialog"
-                  ng-submit="release()">
-                <div class="modal-dialog" role="document" style="width: 960px">
-                    <div class="modal-content">
-                        <div class="modal-header panel-primary">
-                            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
-                                    aria-hidden="true">&times;</span></button>
-                            <h4 class="modal-title">发布</h4>
-                        </div>
-                        <div class="modal-body">
-                            <div class="form-group">
-                                <label class="col-sm-2 control-label">
-                                    Changes:</label>
-                                <div class="col-sm-10">
-                                    <table class="table table-bordered table-striped text-center table-hover"
-                                           ng-show="toReleaseNamespace.itemModifiedCnt">
-                                        <thead>
-                                        <tr>
-                                            <th>
-                                                Key
-                                            </th>
-                                            <th>
-                                                Old Value
-                                            </th>
-                                            <th>
-                                                New Value
-                                            </th>
-                                            <th>
-                                                最后修改人
-                                            </th>
-                                            <th>
-                                                最后修改时间
-                                            </th>
-                                        </tr>
-                                        </thead>
-                                        <tbody>
-
-                                        <tr ng-repeat="config in toReleaseNamespace.items"
-                                            ng-if="config.item.key && config.isModified">
-                                            <td width="20%" title="{{config.item.key}}">
-                                                        <span class="label label-danger"
-                                                              ng-show="!config.newValue">deleted</span>
-                                                <span ng-bind="config.item.key | limitTo: 250"></span>
-                                                <span ng-bind="config.item.key.length > 250 ? '...' :''"></span>
-                                            </td>
-                                            <td width="25%" title="{{config.oldValue}}">
-                                                <span ng-bind="config.oldValue | limitTo: 250"></span>
-                                                <span ng-bind="config.oldValue.length > 250 ? '...': ''"></span>
-                                            </td>
-                                            <td width="25%" title="{{config.newValue}}">
-                                                <span ng-bind="config.newValue | limitTo: 250"></span>
-                                                <span ng-bind="config.newValue.length > 250 ? '...': ''"></span>
-                                            </td>
-                                            <td width="15%" ng-bind="config.item.lastModifiedBy">
-                                            </td>
-                                            <td width="15%"
-                                                ng-bind="config.item.lastModifiedTime | date: 'yyyy-MM-dd HH:mm:ss'">
-                                            </td>
-                                        </tr>
-                                        </tbody>
-                                    </table>
-                                            <span ng-show="!toReleaseNamespace.itemModifiedCnt">
-                                                配置没有变化
-                                            </span>
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label class="col-sm-2 control-label">
-                                    <apollorequiredfiled></apollorequiredfiled>
-                                    Release Name:</label>
-                                <div class="col-sm-5">
-                                    <input type="text" class="form-control" placeholder="input release title"
-                                           ng-model="releaseTitle" ng-required="true">
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label class="col-sm-2 control-label">Comment:</label>
-                                <div class="col-sm-10">
-                                            <textarea rows="4" class="form-control" style="margin-top: 15px;"
-                                                      ng-model="releaseComment"
-                                                      placeholder="Add an optional extended description..."></textarea>
-                                </div>
-                            </div>
-
-
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-default" data-dismiss="modal">关闭</button>
-                            <button type="submit" class="btn btn-primary">发布
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </form>
-
-            <!--table mode item modal-->
-            <form class="modal fade form-horizontal" id="itemModal" role="dialog" ng-submit="doItem()">
-                <div class="modal-dialog" role="document">
-                    <div class="modal-content">
-                        <div class="modal-header panel-primary">
-                            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
-                                    aria-hidden="true">&times;</span></button>
-                            <h4 class="modal-title">
-                                <span ng-show="tableViewOperType == 'create'"> 添加配置项</span>
-                                <span ng-show="tableViewOperType == 'retrieve'"> 查看配置项</span>
-                                <span ng-show="tableViewOperType == 'update'"> 修改配置项</span>
-                            </h4>
-                        </div>
-                        <div class="modal-body">
-                            <div class="form-group">
-                                <label class="col-sm-2 control-label">
-                                    <apollorequiredfiled
-                                            ng-show="tableViewOperType != 'retrieve'"></apollorequiredfiled>
-                                    Key
-                                </label>
-                                <div class="col-sm-10">
-                                    <input type="text" class="form-control" ng-model="item.key"
-                                           ng-required="true" ng-disabled="tableViewOperType != 'create'">
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label class="col-sm-2 control-label">
-                                    <apollorequiredfiled
-                                            ng-show="tableViewOperType != 'retrieve'"></apollorequiredfiled>
-                                    Value
-                                </label>
-                                <div class="col-sm-10">
-                                            <textarea type="text" class="form-control" rows="6" ng-model="item.value"
-                                                      ng-required="true" ng-show="tableViewOperType != 'retrieve'">
-                                                </textarea>
-                                    <p ng-bind="item.value" ng-show="tableViewOperType == 'retrieve'"></p>
-                                </div>
-                            </div>
-                            <div class="form-group" ng-show="tableViewOperType == 'retrieve'">
-                                <label class="col-sm-2 control-label">Released Value</label>
-                                <div class="col-sm-10">
-                                    <p ng-show="!item.oldValue">这是新增的配置</p>
-                                    <p ng-show="item.oldValue" ng-bind="item.oldValue"></p>
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label class="col-sm-2 control-label">Comment</label>
-                                <div class="col-sm-10">
-                                            <textarea class="form-control" ng-model="item.comment" rows="2"
-                                                      ng-disabled="tableViewOperType == 'retrieve'">
-
-                                            </textarea>
-                                </div>
-                            </div>
-                            <div class="form-group" ng-show="tableViewOperType != 'retrieve'">
-                                <label class="col-sm-2 control-label">
-                                    <apollorequiredfiled></apollorequiredfiled>
-                                    选择集群</label>
-                                <div class="col-sm-10">
-                                    <apolloclusterselector apollo-app-id="pageContext.appId"
-                                                           apollo-default-all-checked="false"
-                                                           apollo-default-checked-env="pageContext.env"
-                                                           apollo-default-checked-cluster="pageContext.clusterName"
-                                                           apollo-select="collectSelectedClusters">
-
-                                    </apolloclusterselector>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-default" ng-click="switchToEdit()"
-                                    ng-show="tableViewOperType == 'retrieve' && hasModifyPermission">修改
-                            </button>
-                            <button type="button" class="btn btn-default" data-dismiss="modal">关闭
-                            </button>
-                            <button type="submit" class="btn btn-primary"
-                                    ng-show="tableViewOperType != 'retrieve'">提交
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </form>
         </div>
     </div>
 
+    <!--具体配置信息-->
+    <!--namespaces-->
+    <div class="config-item-container hide"
+         ng-class="{'view-mode-1': viewMode == 1, 'view-mode-2': viewMode == 2}"
+         ng-controller="ConfigNamespaceController">
 
+        <h4 class="text-center" ng-show="viewMode == 2">
+            当前操作环境:{{pageContext.env}}， 集群:{{pageContext.clusterName}}
+        </h4>
+        <div class="alert alert-info alert-dismissible" role="alert"
+             ng-show="(!hideTip || !hideTip[pageContext.appId][pageContext.clusterName]) && envMapClusters[pageContext.env]">
+
+            <button class="btn btn-sm btn-default pull-right" style="margin-top: -7px;margin-right:-15px;"
+                    ng-click="closeTip(pageContext.clusterName)">不再提示
+            </button>
+
+            <!--default cluster tip -->
+            <div ng-show="pageContext.clusterName == 'default'">
+                <strong>注意: </strong>所有不属于
+                <span ng-bind="envMapClusters[pageContext.env]"></span>
+                集群的实例会使用default集群（当前页面）的配置，属于
+                <span ng-bind="envMapClusters[pageContext.env]"></span>
+                的实例会使用对应集群的配置！
+            </div>
+
+            <!--custom cluster tip-->
+            <div ng-show="pageContext.clusterName != 'default'">
+                <strong>注意:</strong>属于
+                <span ng-bind="pageContext.clusterName"></span>
+                集群的实例只会使用
+                <span ng-bind="pageContext.clusterName"></span>
+                集群（当前页面）的配置，只有当对应namespace在当前集群没有发布过配置时，才会使用default集群的配置。
+            </div>
+
+        </div>
+
+        <div class="alert alert-info"
+             ng-if="hasNotPublishNamespace">
+            <p><b>注意:</b> 以下环境/集群有未发布的配置，客户端获取不到未发布的配置，请及时发布。</p>
+            <p>
+                <mark ng-bind="namespacePublishInfo.join('，')"></mark>
+            </p>
+        </div>
+
+        <apollonspanel ng-repeat="namespace in namespaces"
+                       namespace="namespace"
+                       app-id="pageContext.appId"
+                       env="pageContext.env"
+                       lock-check="lockCheck"
+                       cluster="pageContext.clusterName"
+                       user="currentUser"
+                       pre-release-ns="prepareReleaseNamespace"
+                       create-item="createItem" edit-item="editItem"
+                       pre-delete-item="preDeleteItem"
+                       show-text="showText"
+                       show-no-modify-permission-dialog="showNoModifyPermissionDialog"
+                       pre-create-branch="preCreateBranch"
+                       pre-delete-branch="preDeleteBranch">
+        </apollonspanel>
+
+        <releasemodal app-id="pageContext.appId"
+                      env="pageContext.env"
+                      cluster="pageContext.clusterName">
+        </releasemodal>
+
+        <itemmodal to-operation-namespace="toOperationNamespace"
+                   app-id="pageContext.appId"
+                   env="pageContext.env"
+                   cluster="pageContext.clusterName"
+                   item="item">
+        </itemmodal>
+
+        <showtextmodal text="text"></showtextmodal>
+
+        <rollbackmodal app-id="pageContext.appId"
+                       env="pageContext.env"
+                       cluster="pageContext.clusterName">
+        </rollbackmodal>
+
+        <rulesmodal app-id="pageContext.appId"
+                    env="pageContext.env"
+                    cluster="pageContext.clusterName">
+
+        </rulesmodal>
+
+
+        <mergeandpublishmodal app-id="pageContext.appId"
+                              env="pageContext.env"
+                              cluster="pageContext.clusterName">
+        </mergeandpublishmodal>
+
+        <publishdenymodal env="pageContext.env"></publishdenymodal>
+
+        <deletenamespacemodal env="pageContext.env"></deletenamespacemodal>
+
+        <apolloconfirmdialog apollo-dialog-id="'deleteConfirmDialog'" apollo-title="'删除配置'"
+                             apollo-detail="'确定要删除配置吗?'"
+                             apollo-show-cancel-btn="true" apollo-confirm="deleteItem"></apolloconfirmdialog>
+
+        <apolloconfirmdialog apollo-dialog-id="'releaseNoPermissionDialog'" apollo-title="'发布'"
+                             apollo-detail="'您没有发布权限哦~ 请找项目管理员 ' + masterUsers + ' 分配发布权限'"
+                             apollo-show-cancel-btn="false"></apolloconfirmdialog>
+
+        <apolloconfirmdialog apollo-dialog-id="'modifyNoPermissionDialog'" apollo-title="'申请配置权限'"
+                             apollo-detail="'请找项目管理员 ' + masterUsers + ' 分配编辑或发布权限'"
+                             apollo-show-cancel-btn="false"></apolloconfirmdialog>
+
+        <apolloconfirmdialog apollo-dialog-id="'masterNoPermissionDialog'" apollo-title="'申请配置权限'"
+                             apollo-detail="'您不是项目管理员， 只有项目管理员才有添加集群、namespace的权限。
+                                 如需管理员权限，请找项目管理员 ' + masterUsers + ' 分配管理员权限'"
+                             apollo-show-cancel-btn="false"></apolloconfirmdialog>
+
+        <apolloconfirmdialog apollo-dialog-id="'namespaceLockedDialog'" apollo-title="'编辑受限'"
+                             apollo-detail="'当前namespace正在被 ' + lockOwner + ' 编辑，一次发布只能被一个人修改.'"
+                             apollo-show-cancel-btn="false"></apolloconfirmdialog>
+
+        <apolloconfirmdialog apollo-dialog-id="'rollbackAlertDialog'" apollo-title="'回滚'"
+                             apollo-detail="'确定要回滚吗?'"
+                             apollo-show-cancel-btn="true" apollo-confirm="rollback"></apolloconfirmdialog>
+
+        <apolloconfirmdialog apollo-dialog-id="'emergencyPublishAlertDialog'" apollo-title="'紧急发布'"
+                             apollo-detail="'确定要紧急发布吗?'"
+                             apollo-show-cancel-btn="true" apollo-confirm="emergencyPublish"></apolloconfirmdialog>
+
+        <apolloconfirmdialog apollo-dialog-id="'deleteBranchDialog'" apollo-title="'删除灰度'"
+                             apollo-detail="'删除灰度会丢失灰度的配置，确定要删除吗?'"
+                             apollo-show-cancel-btn="true" apollo-confirm="deleteBranch"></apolloconfirmdialog>
+
+        <apolloconfirmdialog apollo-dialog-id="'updateRuleTips'" apollo-title="'更新灰度规则提示'"
+                             apollo-detail="'灰度规则已生效，但发现灰度版本有未发布的配置，这些配置需要手动灰度发布才会生效'"></apolloconfirmdialog>
+
+        <apolloconfirmdialog apollo-dialog-id="'mergeAndReleaseDenyDialog'" apollo-title="'全量发布'"
+                             apollo-detail="'namespace主版本有未发布的配置，请先发布主版本配置'"></apolloconfirmdialog>
+
+        <apolloconfirmdialog apollo-dialog-id="'grayReleaseWithoutRulesTips'" apollo-title="'缺失灰度规则提示'"
+                             apollo-detail="'灰度版本还没有配置任何灰度规则，请配置灰度规则'">
+        </apolloconfirmdialog>
+
+        <apolloconfirmdialog apollo-dialog-id="'deleteNamespaceDenyForMasterInstanceDialog'"
+                             apollo-title="'删除Namespace警告信息'"
+                             apollo-detail="'发现有 <b>' + deleteNamespaceContext.namespace.instancesCount +
+                             '</b> 个实例正在使用Namespace(' + deleteNamespaceContext.namespace.baseInfo.namespaceName +
+                             ')，删除Namespace将导致实例获取不到配置。<br>
+                             请到 <ins>“实例列表”</ins> 确认实例信息，如已确认删除Namespace将不会导致实例异常，
+                             请联系Apollo相关负责人删除Namespace'"
+                             apollo-confirm="continueDeleteNamespace">
+        </apolloconfirmdialog>
+
+        <apolloconfirmdialog apollo-dialog-id="'deleteNamespaceDenyForBranchInstanceDialog'"
+                             apollo-title="'删除Namespace警告信息'"
+                             apollo-detail="'发现有 <b>' + deleteNamespaceContext.namespace.branch.latestReleaseInstances.total
+                             + '</b> 个实例正在使用Namespace(' + deleteNamespaceContext.namespace.baseInfo.namespaceName +
+                             ')灰度版本的配置，删除Namespace将导致实例获取不到配置。<br>
+                             请到 <ins>“灰度版本” => “实例列表”</ins> 确认实例信息，如已确认删除Namespace将不会导致实例异常，
+                             请联系Apollo相关负责人删除Namespace'"
+                             apollo-confirm="continueDeleteNamespace">
+        </apolloconfirmdialog>
+
+        <apolloconfirmdialog apollo-dialog-id="'deleteNamespaceDenyForPublicNamespaceDialog'"
+                             apollo-title="'删除Namespace失败提示'"
+                             apollo-detail="deleteNamespaceContext.detailReason">
+        </apolloconfirmdialog>
+
+
+        <div class="modal fade" id="createBranchTips" tabindex="-1" role="dialog">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header panel-primary">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
+                                aria-hidden="true">&times;</span></button>
+                        <h4 class="modal-title">创建灰度须知</h4>
+                    </div>
+                    <div class="modal-body">
+                        通过创建灰度版本，您可以对某些配置做灰度测试<br>
+                        灰度流程为:<br>
+                        &nbsp;&nbsp;1.创建灰度版本 <br>
+                        &nbsp;&nbsp;2.配置灰度配置项<br>
+                        &nbsp;&nbsp;3.配置灰度规则.如果是私有的namespace可以按照客户端的IP进行灰度，如果是公共的namespace则可以同时按AppId和客户端的IP进行灰度<br>
+                        &nbsp;&nbsp;4.灰度发布<br>
+                        灰度版本最终有两种结果:<b>全量发布和放弃灰度</b><br>
+                        <b>全量发布</b>:灰度的配置合到主版本并发布，所有的客户端都会使用合并后的配置<br>
+                        <b>放弃灰度</b>:删除灰度版本，所有的客户端都会使用回主版本的配置<br>
+                        注意事项:<br>
+                        &nbsp;&nbsp;1.如果灰度版本已经有灰度发布过，那么修改灰度规则后，无需再次灰度发布就立即生效<br>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-default" data-dismiss="modal">取消</button>
+                        <button type="button" class="btn btn-primary" data-dismiss="modal"
+                                ng-click="createBranch()">
+                            确定
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 
@@ -559,6 +350,8 @@
 <!-- jquery.js -->
 <script src="vendor/jquery.min.js" type="text/javascript"></script>
 
+<script src="vendor/select2/select2.min.js" type="text/javascript"></script>
+
 <!--lodash.js-->
 <script src="vendor/lodash.min.js" type="text/javascript"></script>
 
@@ -567,7 +360,6 @@
 
 <!--angular-->
 <script src="vendor/angular/angular.min.js"></script>
-<script src="vendor/angular/angular-ui-router.min.js"></script>
 <script src="vendor/angular/angular-resource.min.js"></script>
 <script src="vendor/angular/angular-toastr-1.4.1.tpls.min.js"></script>
 <script src="vendor/angular/loading-bar.min.js"></script>
@@ -576,6 +368,24 @@
 <script src="vendor/bootstrap/js/bootstrap.min.js" type="text/javascript"></script>
 <script src="vendor/bootstrap/js/bootstrap-treeview.min.js" type="text/javascript"></script>
 
+<script src="vendor/diff.min.js" type="text/javascript"></script>
+
+<script src="vendor/clipboard.min.js" type="text/javascript"></script>
+
+<script src="vendor/ui-ace/ace.js" type="text/javascript"></script>
+<script src="vendor/ui-ace/ui-ace.min.js" type="text/javascript"></script>
+<script src="vendor/ui-ace/mode-properties.js" type="text/javascript"></script>
+<script src="vendor/ui-ace/mode-xml.js" type="text/javascript"></script>
+<script src="vendor/ui-ace/mode-yaml.js" type="text/javascript"></script>
+<script src="vendor/ui-ace/mode-json.js" type="text/javascript"></script>
+<script src="vendor/ui-ace/worker-json.js" type="text/javascript"></script>
+<script src="vendor/ui-ace/worker-xml.js" type="text/javascript"></script>
+
+
+
+<!--valdr-->
+<script src="vendor/valdr/valdr.min.js" type="text/javascript"></script>
+<script src="vendor/valdr/valdr-message.min.js" type="text/javascript"></script>
 
 <!--biz script-->
 <script type="application/javascript" src="scripts/app.js"></script>
@@ -585,19 +395,39 @@
 <script type="application/javascript" src="scripts/services/EnvService.js"></script>
 <script type="application/javascript" src="scripts/services/UserService.js"></script>
 <script type="application/javascript" src="scripts/services/ConfigService.js"></script>
+<script type="application/javascript" src="scripts/services/ReleaseService.js"></script>
 <script type="application/javascript" src="scripts/services/PermissionService.js"></script>
+<script type="application/javascript" src="scripts/services/NamespaceService.js"></script>
+<script type="application/javascript" src="scripts/services/CommitService.js"></script>
+<script type="application/javascript" src="scripts/services/CommonService.js"></script>
+<script type="application/javascript" src="scripts/services/NamespaceLockService.js"></script>
+<script type="application/javascript" src="scripts/services/InstanceService.js"></script>
+<script type="application/javascript" src="scripts/services/FavoriteService.js"></script>
+<script type="application/javascript" src="scripts/services/NamespaceBranchService.js"></script>
+<script type="application/javascript" src="scripts/services/EventManager.js"></script>
 
 
 <script type="application/javascript" src="scripts/AppUtils.js"></script>
 
 <!--directive-->
-<script type="application/javascript" src="scripts/directive.js"></script>
+<script type="application/javascript" src="scripts/directive/directive.js"></script>
+<script type="application/javascript" src="scripts/directive/namespace-panel-directive.js"></script>
+<script type="application/javascript" src="scripts/directive/diff-directive.js"></script>
+<script type="application/javascript" src="scripts/directive/release-modal-directive.js"></script>
+<script type="application/javascript" src="scripts/directive/item-modal-directive.js"></script>
+<script type="application/javascript" src="scripts/directive/show-text-modal-directive.js"></script>
+<script type="application/javascript" src="scripts/directive/rollback-modal-directive.js"></script>
+<script type="application/javascript" src="scripts/directive/gray-release-rules-modal-directive.js"></script>
+<script type="application/javascript" src="scripts/directive/merge-and-publish-modal-directive.js"></script>
+<script type="application/javascript" src="scripts/directive/publish-deny-modal-directive.js"></script>
+<script type="application/javascript" src="scripts/directive/delete-namespace-modal-directive.js"></script>
 
 <!--controller-->
-<script type="application/javascript" src="scripts/controller/app/ConfigNamespaceController.js"></script>
-<script type="application/javascript" src="scripts/controller/app/ConfigBaseInfoController.js"></script>
+<script type="application/javascript" src="scripts/controller/config/ConfigNamespaceController.js"></script>
+<script type="application/javascript" src="scripts/controller/config/ConfigBaseInfoController.js"></script>
 
 <script type="application/javascript" src="scripts/PageCommon.js"></script>
 
+<script src="scripts/valdr.js" type="text/javascript"></script>
 </body>
 </html>

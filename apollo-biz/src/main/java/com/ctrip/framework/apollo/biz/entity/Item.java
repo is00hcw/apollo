@@ -2,12 +2,13 @@ package com.ctrip.framework.apollo.biz.entity;
 
 import com.ctrip.framework.apollo.common.entity.BaseEntity;
 
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.Table;
-
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.Where;
+
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.Lob;
+import javax.persistence.Table;
 
 @Entity
 @Table(name = "Item")
@@ -22,6 +23,7 @@ public class Item extends BaseEntity {
   private String key;
 
   @Column(name = "value")
+  @Lob
   private String value;
 
   @Column(name = "comment")

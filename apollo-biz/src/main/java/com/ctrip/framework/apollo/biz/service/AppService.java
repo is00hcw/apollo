@@ -1,7 +1,10 @@
 package com.ctrip.framework.apollo.biz.service;
 
-import java.util.List;
-import java.util.Objects;
+import com.ctrip.framework.apollo.biz.entity.Audit;
+import com.ctrip.framework.apollo.biz.repository.AppRepository;
+import com.ctrip.framework.apollo.common.entity.App;
+import com.ctrip.framework.apollo.common.exception.BadRequestException;
+import com.ctrip.framework.apollo.common.exception.ServiceException;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -9,11 +12,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.ctrip.framework.apollo.common.entity.App;
-import com.ctrip.framework.apollo.biz.entity.Audit;
-import com.ctrip.framework.apollo.biz.repository.AppRepository;
-import com.ctrip.framework.apollo.common.utils.BeanUtils;
-import com.ctrip.framework.apollo.core.exception.ServiceException;
+import java.util.List;
+import java.util.Objects;
 
 @Service
 public class AppService {
@@ -71,14 +71,25 @@ public class AppService {
   }
 
   @Transactional
-  public App update(App app) {
-    App managedApp = appRepository.findByAppId(app.getAppId());
-    BeanUtils.copyEntityProperties(app, managedApp);
+  public void update(App app) {
+    String appId = app.getAppId();
+
+    App managedApp = appRepository.findByAppId(appId);
+    if (managedApp == null) {
+      throw new BadRequestException(String.format("App not exists. AppId = %s", appId));
+    }
+
+    managedApp.setName(app.getName());
+    managedApp.setOrgId(app.getOrgId());
+    managedApp.setOrgName(app.getOrgName());
+    managedApp.setOwnerName(app.getOwnerName());
+    managedApp.setOwnerEmail(app.getOwnerEmail());
+    managedApp.setDataChangeLastModifiedBy(app.getDataChangeLastModifiedBy());
+
     managedApp = appRepository.save(managedApp);
     
     auditService.audit(App.class.getSimpleName(), managedApp.getId(), Audit.OP.UPDATE,
         managedApp.getDataChangeLastModifiedBy());
     
-    return managedApp;
   }
 }

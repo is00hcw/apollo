@@ -1,30 +1,33 @@
 package com.ctrip.framework.apollo.biz.service;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
+import com.google.common.base.Strings;
+
+import com.ctrip.framework.apollo.biz.entity.Audit;
+import com.ctrip.framework.apollo.biz.entity.Cluster;
+import com.ctrip.framework.apollo.biz.repository.ClusterRepository;
+import com.ctrip.framework.apollo.common.exception.BadRequestException;
+import com.ctrip.framework.apollo.common.exception.ServiceException;
+import com.ctrip.framework.apollo.common.utils.BeanUtils;
+import com.ctrip.framework.apollo.core.ConfigConsts;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.ctrip.framework.apollo.biz.entity.Audit;
-import com.ctrip.framework.apollo.biz.entity.Cluster;
-import com.ctrip.framework.apollo.biz.repository.ClusterRepository;
-import com.ctrip.framework.apollo.common.utils.BeanUtils;
-import com.ctrip.framework.apollo.core.ConfigConsts;
-import com.ctrip.framework.apollo.core.exception.ServiceException;
-
-import com.google.common.base.Strings;
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
 
 @Service
 public class ClusterService {
 
   @Autowired
   private ClusterRepository clusterRepository;
-
   @Autowired
   private AuditService auditService;
+  @Autowired
+  private NamespaceService namespaceService;
+
 
   public boolean isClusterNameUnique(String appId, String clusterName) {
     Objects.requireNonNull(appId, "AppId must not be null");
@@ -36,22 +39,40 @@ public class ClusterService {
     return clusterRepository.findByAppIdAndName(appId, name);
   }
 
-  public List<Cluster> findClusters(String appId) {
+  public Cluster findOne(long clusterId) {
+    return clusterRepository.findOne(clusterId);
+  }
+
+  public List<Cluster> findParentClusters(String appId) {
     if (Strings.isNullOrEmpty(appId)) {
       return Collections.emptyList();
     }
 
-    List<Cluster> clusters = clusterRepository.findByAppId(appId);
+    List<Cluster> clusters = clusterRepository.findByAppIdAndParentClusterId(appId, 0L);
     if (clusters == null) {
       return Collections.emptyList();
     }
+
+    Collections.sort(clusters);
+
     return clusters;
   }
 
   @Transactional
-  public Cluster save(Cluster entity) {
+  public Cluster saveWithInstanceOfAppNamespaces(Cluster entity) {
+
+    Cluster savedCluster = saveWithoutInstanceOfAppNamespaces(entity);
+
+    namespaceService.instanceOfAppNamespaces(savedCluster.getAppId(), savedCluster.getName(),
+                                             savedCluster.getDataChangeCreatedBy());
+
+    return savedCluster;
+  }
+
+  @Transactional
+  public Cluster saveWithoutInstanceOfAppNamespaces(Cluster entity) {
     if (!isClusterNameUnique(entity.getAppId(), entity.getName())) {
-      throw new ServiceException("cluster not unique");
+      throw new BadRequestException("cluster not unique");
     }
     entity.setId(0);//protection
     Cluster cluster = clusterRepository.save(entity);
@@ -66,8 +87,11 @@ public class ClusterService {
   public void delete(long id, String operator) {
     Cluster cluster = clusterRepository.findOne(id);
     if (cluster == null) {
-      return;
+      throw new BadRequestException("cluster not exist");
     }
+
+    //delete linked namespaces
+    namespaceService.deleteByAppIdAndClusterName(cluster.getAppId(), cluster.getName(), operator);
 
     cluster.setDeleted(true);
     cluster.setDataChangeLastModifiedBy(operator);
@@ -84,7 +108,7 @@ public class ClusterService {
     managedCluster = clusterRepository.save(managedCluster);
 
     auditService.audit(Cluster.class.getSimpleName(), managedCluster.getId(), Audit.OP.UPDATE,
-        managedCluster.getDataChangeLastModifiedBy());
+                       managedCluster.getDataChangeLastModifiedBy());
 
     return managedCluster;
   }
@@ -103,4 +127,14 @@ public class ClusterService {
 
     auditService.audit(Cluster.class.getSimpleName(), cluster.getId(), Audit.OP.INSERT, createBy);
   }
+
+  public List<Cluster> findChildClusters(String appId, String parentClusterName) {
+    Cluster parentCluster = findOne(appId, parentClusterName);
+    if (parentCluster == null) {
+      throw new BadRequestException("parent cluster not exist");
+    }
+
+    return clusterRepository.findByParentClusterId(parentCluster.getId());
+  }
+
 }

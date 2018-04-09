@@ -1,19 +1,21 @@
 package com.ctrip.framework.apollo.portal.entity.vo;
 
-import com.ctrip.framework.apollo.core.dto.ItemChangeSets;
+import com.ctrip.framework.apollo.common.dto.ItemChangeSets;
 
 public class ItemDiffs {
-  private NamespaceIdentifer namespace;
+  private NamespaceIdentifier namespace;
   private ItemChangeSets diffs;
+  private String extInfo;
 
-  public ItemDiffs(NamespaceIdentifer namespace){
+  public ItemDiffs(NamespaceIdentifier namespace) {
     this.namespace = namespace;
   }
-  public NamespaceIdentifer getNamespace() {
+
+  public NamespaceIdentifier getNamespace() {
     return namespace;
   }
 
-  public void setNamespace(NamespaceIdentifer namespace) {
+  public void setNamespace(NamespaceIdentifier namespace) {
     this.namespace = namespace;
   }
 
@@ -23,5 +25,13 @@ public class ItemDiffs {
 
   public void setDiffs(ItemChangeSets diffs) {
     this.diffs = diffs;
+  }
+
+  public String getExtInfo() {
+    return extInfo;
+  }
+
+  public void setExtInfo(String extInfo) {
+    this.extInfo = extInfo;
   }
 }
