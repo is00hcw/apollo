@@ -14,14 +14,14 @@ directive_module.directive('apollonav',
                                        });
 
                                        scope.sourceApps = [];
-                                       scope.copiedApps = [];
+                                       scope.copyedApps = [];
 
                                        AppService.find_apps().then(function (result) {
                                            result.forEach(function (app) {
                                                app.selected = false;
                                                scope.sourceApps.push(app);
                                            });
-                                           scope.copiedApps = angular.copy(scope.sourceApps);
+                                           scope.copyedApps = angular.copy(scope.sourceApps);
                                        }, function (result) {
                                            toastr.error(AppUtil.errorMsg(result), "load apps error");
                                        });
@@ -36,12 +36,12 @@ directive_module.directive('apollonav',
                                        };
 
                                        scope.changeSearchKey = function () {
-                                           scope.copiedApps = [];
+                                           scope.copyedApps = [];
                                            var searchKey = scope.searchKey.toLocaleLowerCase();
                                            scope.sourceApps.forEach(function (app) {
                                                if (app.name.toLocaleLowerCase().indexOf(searchKey) > -1
                                                    || app.appId.toLocaleLowerCase().indexOf(searchKey) > -1) {
-                                                   scope.copiedApps.push(app);
+                                                   scope.copyedApps.push(app);
                                                }
                                            });
                                            scope.shouldShowAppList = true;
@@ -63,18 +63,18 @@ directive_module.directive('apollonav',
                                        element.bind("keydown keypress", function (event) {
 
                                            if (event.keyCode == 40) {
-                                               if (selectedAppIdx < scope.copiedApps.length - 1) {
+                                               if (selectedAppIdx < scope.copyedApps.length - 1) {
                                                    clearAppsSelectedStatus();
-                                                   scope.copiedApps[++selectedAppIdx].selected = true;
+                                                   scope.copyedApps[++selectedAppIdx].selected = true;
                                                }
                                            } else if (event.keyCode == 38) {
                                                if (selectedAppIdx >= 1) {
                                                    clearAppsSelectedStatus();
-                                                   scope.copiedApps[--selectedAppIdx].selected = true;
+                                                   scope.copyedApps[--selectedAppIdx].selected = true;
                                                }
                                            } else if (event.keyCode == 13) {
                                                if (scope.shouldShowAppList && selectedAppIdx > -1) {
-                                                   select(scope.copiedApps[selectedAppIdx]);
+                                                   select(scope.copyedApps[selectedAppIdx]);
                                                    event.preventDefault();
                                                } else {
                                                    scope.jumpToConfigPage();
