@@ -1,10 +1,8 @@
-# Dockerfile for apollo-portal
+# Dockerfile for apollo-adminservice
 # Build with:
-# docker build -t apollo-portal .
+# docker build -t apollo-adminservice .
 # Run with:
-# docker run -p 8080:8080 -d -v /tmp/logs:/opt/logs --name apollo-portal apollo-portal
-# Or if 8080 was taken:
-# docker run -p 8070:8080 -d -v /tmp/logs:/opt/logs --name apollo-portal apollo-portal
+# docker run -p 8090:8090 -d -v /tmp/logs:/opt/logs --name apollo-adminservice apollo-adminservice
 
 FROM openjdk:8-jre-alpine
 MAINTAINER ameizi <sxyx2008@163.com>
@@ -18,13 +16,13 @@ RUN echo "http://mirrors.aliyun.com/alpine/v3.6/main" > /etc/apk/repositories \
     && ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime \
     && echo "Asia/Shanghai" > /etc/timezone
 
-ADD apollo-portal/target/apollo-portal-${VERSION}-github.zip /apollo-portal/apollo-portal-${VERSION}-github.zip
+ADD apollo-adminservice/target/apollo-adminservice-${VERSION}-github.zip /apollo-adminservice/apollo-adminservice-${VERSION}-github.zip
 
-RUN unzip /apollo-portal/apollo-portal-${VERSION}-github.zip -d /apollo-portal \
-    && rm -rf /apollo-portal/apollo-portal-${VERSION}-github.zip \
-    && sed -i '$d' /apollo-portal/scripts/startup.sh \
-    && echo "tail -f /dev/null" >> /apollo-portal/scripts/startup.sh
+RUN unzip /apollo-adminservice/apollo-adminservice-${VERSION}-github.zip -d /apollo-adminservice \
+    && rm -rf /apollo-adminservice/apollo-adminservice-${VERSION}-github.zip \
+    && sed -i '$d' /apollo-adminservice/scripts/startup.sh \
+    && echo "tail -f /dev/null" >> /apollo-adminservice/scripts/startup.sh
 
-EXPOSE 7070
+EXPOSE 7090
 
-CMD ["/apollo-portal/scripts/startup.sh"]
+CMD ["/apollo-adminservice/scripts/startup.sh"]
