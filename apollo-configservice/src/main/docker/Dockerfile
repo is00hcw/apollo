@@ -23,6 +23,6 @@ RUN unzip /apollo-configservice/apollo-configservice-${VERSION}-github.zip -d /a
     && sed -i '$d' /apollo-configservice/scripts/startup.sh \
     && echo "tail -f /dev/null" >> /apollo-configservice/scripts/startup.sh
 
-EXPOSE 8080
+EXPOSE 7080
 
 CMD ["/apollo-configservice/scripts/startup.sh"]
