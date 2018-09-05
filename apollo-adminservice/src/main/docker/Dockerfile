@@ -7,7 +7,7 @@
 FROM openjdk:8-jre-alpine
 MAINTAINER ameizi <sxyx2008@163.com>
 
-ENV VERSION 0.11.0
+ENV VERSION 1.0.0
 
 RUN echo "http://mirrors.aliyun.com/alpine/v3.6/main" > /etc/apk/repositories \
     && echo "http://mirrors.aliyun.com/alpine/v3.6/community" >> /etc/apk/repositories \
@@ -16,13 +16,13 @@ RUN echo "http://mirrors.aliyun.com/alpine/v3.6/main" > /etc/apk/repositories \
     && ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime \
     && echo "Asia/Shanghai" > /etc/timezone
 
-ADD apollo-adminservice/target/apollo-adminservice-${VERSION}-github.zip /apollo-adminservice/apollo-adminservice-${VERSION}-github.zip
+ADD apollo-adminservice-${VERSION}-github.zip /apollo-adminservice/apollo-adminservice-${VERSION}-github.zip
 
 RUN unzip /apollo-adminservice/apollo-adminservice-${VERSION}-github.zip -d /apollo-adminservice \
     && rm -rf /apollo-adminservice/apollo-adminservice-${VERSION}-github.zip \
     && sed -i '$d' /apollo-adminservice/scripts/startup.sh \
     && echo "tail -f /dev/null" >> /apollo-adminservice/scripts/startup.sh
 
-EXPOSE 7090
+EXPOSE 8090
 
 CMD ["/apollo-adminservice/scripts/startup.sh"]
