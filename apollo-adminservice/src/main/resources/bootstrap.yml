@@ -1,10 +1,10 @@
 eureka:
   instance:
-    hostname: ${hostname:localhost}
-    preferIpAddress: true
+    hostname: apollo.hwtest.pagoda.com.cn
+    preferIpAddress: false
   client:
     serviceUrl:
-      defaultZone: http://apollo-configservice.hwtest.pagoda.com.cn:7080/eureka/
+      defaultZone: http://apollo.hwtest.pagoda.com.cn:7080/eureka/
     healthcheck:
       enabled: true
     eurekaServiceUrlPollIntervalSeconds: 60
