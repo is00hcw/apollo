@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # apollo config db info
-apollo_config_db_url=jdbc:mysql://mysql-apollo:3306/ApolloConfigDB?characterEncoding=utf8
+apollo_config_db_url=jdbc:mysql://mysql-apollo:3306/ApolloConfigDBPro?characterEncoding=utf8
 apollo_config_db_username=root
 apollo_config_db_password=pagoda@2018
 
