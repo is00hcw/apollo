@@ -23,6 +23,6 @@ RUN unzip /apollo-portal/apollo-portal-${VERSION}-github.zip -d /apollo-portal \
     && sed -i '$d' /apollo-portal/scripts/startup.sh \
     && echo "tail -f /dev/null" >> /apollo-portal/scripts/startup.sh
 
-EXPOSE 7070
+EXPOSE 7076
 
 CMD ["/apollo-portal/scripts/startup.sh"]

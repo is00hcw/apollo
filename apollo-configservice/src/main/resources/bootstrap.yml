@@ -9,7 +9,7 @@ eureka:
     enableSelfPreservation: false
   client:
     serviceUrl:
-      defaultZone: http://erp2.test.pagoda.com.cn:7080/eureka/
+      defaultZone: http://erp2.test.pagoda.com.cn:7086/eureka/
     healthcheck:
       enabled: true
     eurekaServiceUrlPollIntervalSeconds: 60
