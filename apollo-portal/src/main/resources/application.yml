@@ -5,7 +5,7 @@ spring:
     active: ${apollo_profile}
 
 server:
-  port: 8080
+  port: 7070
   compression:
     enabled: true
   
