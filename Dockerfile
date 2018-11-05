@@ -23,6 +23,6 @@ RUN unzip /apollo-adminservice/apollo-adminservice-${VERSION}-github.zip -d /apo
     && sed -i '$d' /apollo-adminservice/scripts/startup.sh \
     && echo "tail -f /dev/null" >> /apollo-adminservice/scripts/startup.sh
 
-EXPOSE 7090
+EXPOSE 7096
 
 CMD ["/apollo-adminservice/scripts/startup.sh"]
