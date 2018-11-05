@@ -13,8 +13,8 @@ apollo_portal_db_password=pagoda@2018
 
 # meta server url, different environments should have different meta server addresses
 dev_meta=http://erp2.test.pagoda.com.cn:7080
-fat_meta=http://erp2.test.pagoda.com.cn:7080
-uat_meta=http://erp2.test.pagoda.com.cn:7080
+fat_meta=http://erp2.test.pagoda.com.cn:7081
+uat_meta=http://erp2.test.pagoda.com.cn:7082
 pro_meta=http://erp2.test.pagoda.com.cn:7086
 
 META_SERVERS_OPTS="-Ddev_meta=$dev_meta -Dfat_meta=$fat_meta -Duat_meta=$uat_meta -Dpro_meta=$pro_meta"
